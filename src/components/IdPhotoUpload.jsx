@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AlertCircle, IdCard, Plus, X } from 'lucide-react'
+import { AlertCircle, Check, IdCard, Plus, X } from 'lucide-react'
 import { ID_PHOTO_MAX_BYTES, ID_PHOTO_TYPES } from '../lib/constants'
 
 const MB = 1024 * 1024
@@ -73,21 +73,28 @@ export default function IdPhotoUpload({ photos, required, onChange, disabled }) 
         {previews.map((url, index) => (
           <div
             key={url}
-            className="group relative aspect-[4/3] overflow-hidden rounded-lg border border-slate-200/80 bg-slate-100"
+            className="relative aspect-[4/3] overflow-hidden rounded-lg border border-slate-200/80 bg-slate-100"
           >
             <img
               src={url}
               alt={`Student ID ${index + 1}`}
               className="size-full object-cover"
             />
+
+            {/* Numbered so a student can tell which one they are removing */}
+            <span className="absolute bottom-1 left-1 grid size-5 place-items-center rounded-md bg-slate-900/70 text-[10px] font-semibold text-white">
+              {index + 1}
+            </span>
+
             {!disabled && (
               <button
                 type="button"
                 onClick={() => removeAt(index)}
                 aria-label={`Remove ID photo ${index + 1}`}
-                className="absolute top-1 right-1 grid size-5 place-items-center rounded-md bg-slate-900/70 text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 focus-visible:opacity-100"
+                title="Remove"
+                className="absolute top-1 right-1 grid size-6 place-items-center rounded-md bg-slate-900/75 text-white shadow-sm transition-all duration-200 ease-in-out hover:scale-105 hover:bg-rose-600"
               >
-                <X className="size-3" strokeWidth={3} />
+                <X className="size-3.5" strokeWidth={3} />
               </button>
             )}
           </div>
@@ -124,14 +131,28 @@ export default function IdPhotoUpload({ photos, required, onChange, disabled }) 
           <AlertCircle className="mt-0.5 size-3 shrink-0" strokeWidth={2.5} />
           {error}
         </p>
-      ) : (
-        !complete && (
-          <p className="mt-2 flex items-start gap-1.5 text-xs text-slate-400">
-            <IdCard className="mt-0.5 size-3 shrink-0" strokeWidth={2} />
-            {required - photos.length} more needed. JPG, PNG or WebP, up to{' '}
-            {ID_PHOTO_MAX_BYTES / MB} MB each.
+      ) : complete ? (
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <p className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600">
+            <Check className="size-3" strokeWidth={3} />
+            All {required} IDs added
           </p>
-        )
+          {!disabled && (
+            <button
+              type="button"
+              onClick={() => onChange([])}
+              className="text-xs font-medium text-slate-400 transition-colors duration-200 hover:text-rose-600"
+            >
+              Remove all
+            </button>
+          )}
+        </div>
+      ) : (
+        <p className="mt-2 flex items-start gap-1.5 text-xs text-slate-400">
+          <IdCard className="mt-0.5 size-3 shrink-0" strokeWidth={2} />
+          {required - photos.length} more needed. JPG, PNG or WebP, up to{' '}
+          {ID_PHOTO_MAX_BYTES / MB} MB each.
+        </p>
       )}
     </div>
   )
