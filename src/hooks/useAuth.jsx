@@ -114,13 +114,34 @@ export function AuthProvider({ children }) {
     return { error }
   }, [])
 
-  /** Exchange the emailed code for a session. */
+  /**
+   * Exchange the emailed code for a session.
+   *
+   * Which template Supabase sent decides the token type: a brand-new sign-up
+   * with "Confirm email" enabled issues a `signup` token, everything else an
+   * `email` one. Trying both keeps registration working under either project
+   * setting instead of depending on a dashboard toggle.
+   */
   const verifyCode = useCallback(async (email, token) => {
-    const { data, error } = await supabase.auth.verifyOtp({
-      email: email.trim().toLowerCase(),
-      token: token.trim(),
+    const address = email.trim().toLowerCase()
+    const code = token.trim()
+
+    let { data, error } = await supabase.auth.verifyOtp({
+      email: address,
+      token: code,
       type: 'email',
     })
+
+    if (error) {
+      const retry = await supabase.auth.verifyOtp({
+        email: address,
+        token: code,
+        type: 'signup',
+      })
+      // Only prefer the retry when it actually succeeded, so a genuinely
+      // wrong code still reports the first, more accurate error.
+      if (!retry.error) ({ data, error } = retry)
+    }
 
     if (!error && data.session) setSession(data.session)
     return { data, error }
