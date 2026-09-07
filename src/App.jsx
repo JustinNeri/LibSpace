@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AlertCircle, Loader2 } from 'lucide-react'
 import AdminPanel from './components/AdminPanel'
 import AppHeader from './components/AppHeader'
@@ -13,7 +13,15 @@ import Toast from './components/Toast'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { useReservations } from './hooks/useReservations'
 import { isSupabaseConfigured } from './lib/supabaseClient'
-import { SLOT_MINUTES, formatTime, isSameDay, minutesFromDate, toDateKey } from './lib/time'
+import {
+  SLOT_MINUTES,
+  buildSlots,
+  formatTime,
+  isSameDay,
+  minutesFromDate,
+  toDateKey,
+} from './lib/time'
+import { buildLane, startOptions as freeStarts } from './lib/availability'
 
 export default function App() {
   return (
@@ -42,7 +50,7 @@ function Workspace() {
   const [date, setDate] = useState(() => new Date())
   const [view, setView] = useState('rooms')
   const [openRoom, setOpenRoom] = useState(null)
-  const [selectedSlot, setSelectedSlot] = useState(null)
+  const [booking, setBooking] = useState(null)
   const [saving, setSaving] = useState(false)
   const [progress, setProgress] = useState(null)
   const [error, setError] = useState(null)
@@ -74,14 +82,39 @@ function Workspace() {
   // Re-resolve the open room against fresh data so an admin edit shows up.
   const activeRoom = openRoom ? (rooms.find((r) => r.id === openRoom.id) ?? null) : null
 
+  /**
+   * Every start time the booking form may offer, recomputed from live data
+   * so a slot taken while the form is open disappears from the list.
+   */
+  const bookingStarts = useMemo(() => {
+    if (!booking?.room) return []
+    const slots = buildSlots(dayWindow.startMin, dayWindow.endMin)
+    const lane = buildLane({
+      room: booking.room,
+      slots,
+      schedules,
+      blocks,
+      reservations,
+      weekday,
+      dayWindow,
+      nowMinutes,
+    })
+    return freeStarts(lane, slots)
+  }, [booking, schedules, blocks, reservations, weekday, dayWindow, nowMinutes])
+
+  const openBooking = useCallback(
+    (room, startMin = null) => setBooking({ room, dateKey, startMin }),
+    [dateKey],
+  )
+
   const handleConfirm = useCallback(
-    async (booking) => {
+    async (details) => {
       setSaving(true)
       setError(null)
       setProgress(null)
 
       const { error: insertError } = await createReservation({
-        ...booking,
+        ...details,
         userId: user.id,
         onProgress: setProgress,
       })
@@ -94,16 +127,16 @@ function Workspace() {
         return
       }
 
-      setSelectedSlot(null)
+      setBooking(null)
       setToast(
-        `${booking.room.name} reserved · ${formatTime(booking.startMin)} – ${formatTime(booking.endMin)}`,
+        `${details.room.name} reserved · ${formatTime(details.startMin)} – ${formatTime(details.endMin)}`,
       )
     },
     [createReservation, user],
   )
 
   const closeModal = useCallback(() => {
-    setSelectedSlot(null)
+    setBooking(null)
     setError(null)
   }, [])
 
@@ -161,7 +194,7 @@ function Workspace() {
               nowMinutes={nowMinutes}
               currentUserId={user.id}
               onBack={() => setOpenRoom(null)}
-              onSelectSlot={setSelectedSlot}
+              onReserve={openBooking}
             />
           ) : (
             <RoomList
@@ -188,10 +221,10 @@ function Workspace() {
               weekday={weekday}
               dateKey={dateKey}
               nowMinutes={nowMinutes}
-              selectedSlot={selectedSlot}
+              selectedSlot={booking}
               currentUserId={user.id}
               loading={loading}
-              onSelectSlot={setSelectedSlot}
+              onSelectSlot={(slot) => openBooking(slot.room, slot.startMin)}
             />
             <p className="mt-4 text-xs text-slate-400">
               Times shown in your local timezone · Bookings run up to 2 hours
@@ -214,8 +247,9 @@ function Workspace() {
 
       {/* Keyed per slot so the form resets on every open. */}
       <BookingModal
-        key={selectedSlot ? `${selectedSlot.room.id}-${selectedSlot.startMin}` : 'closed'}
-        slot={selectedSlot}
+        key={booking ? `${booking.room.id}-${booking.startMin ?? 'any'}` : 'closed'}
+        booking={booking}
+        startOptions={bookingStarts}
         saving={saving}
         progress={progress}
         error={error}

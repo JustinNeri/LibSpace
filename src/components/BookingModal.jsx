@@ -3,6 +3,7 @@ import {
   AlertCircle,
   CalendarClock,
   Check,
+  Clock,
   Loader2,
   Monitor,
   Users,
@@ -12,7 +13,6 @@ import IdPhotoUpload from './IdPhotoUpload'
 import { SLOT_MINUTES, formatLongDate, formatTime, fromDateKey } from '../lib/time'
 import { MIN_GROUP_SIZE } from '../lib/constants'
 
-/** Name and student number come from the signed-in profile. */
 function initialForm(defaults) {
   return {
     studentName: defaults?.studentName ?? '',
@@ -23,17 +23,19 @@ function initialForm(defaults) {
 }
 
 /**
- * Controlled booking form.
+ * Controlled booking form. The student picks the start time and how long
+ * they need; both are constrained to what the room actually has free.
  *
- * App remounts this via `key` per slot, so form state starts fresh on
- * every opening without a reset effect.
+ * App remounts this via `key` per opening, so state starts fresh without a
+ * reset effect.
  *
- * @param {object|null} slot   { room, dateKey, startMin, maxSpan }
- * @param {boolean}     saving
- * @param {string|null} error  server-side failure, surfaced inline
+ * @param {object|null} booking  { room, dateKey, startMin } — startMin may be
+ *                               null when opened from the "Reserve" button
+ * @param {Array} startOptions   [{ startMin, maxSpan }] the room's free starts
  */
 export default function BookingModal({
-  slot,
+  booking,
+  startOptions = [],
   saving,
   progress,
   error,
@@ -43,20 +45,21 @@ export default function BookingModal({
 }) {
   const [form, setForm] = useState(() => initialForm(defaults))
   const [photos, setPhotos] = useState([])
+  const [startMin, setStartMin] = useState(
+    () => booking?.startMin ?? startOptions[0]?.startMin ?? null,
+  )
   const [spanSlots, setSpanSlots] = useState(1)
   const [touched, setTouched] = useState(false)
   const firstFieldRef = useRef(null)
 
-  const open = Boolean(slot)
+  const open = Boolean(booking)
 
-  // Pull focus to the first field once the panel has mounted.
   useEffect(() => {
     if (!open) return
     const id = requestAnimationFrame(() => firstFieldRef.current?.focus())
     return () => cancelAnimationFrame(id)
   }, [open])
 
-  // Escape to dismiss, and lock background scroll while open.
   useEffect(() => {
     if (!open) return
 
@@ -73,28 +76,41 @@ export default function BookingModal({
     }
   }, [open, saving, onClose])
 
-  const durationOptions = useMemo(() => {
-    if (!slot) return []
-    return [1, 2, 3, 4]
-      .filter((count) => count <= slot.maxSpan)
-      .map((count) => ({
-        count,
-        label:
-          count % 2 === 0
-            ? `${count / 2} hr${count > 2 ? 's' : ''}`
-            : `${count * SLOT_MINUTES} min`,
-      }))
-  }, [slot])
+  /** How far the chosen start can run before hitting something. */
+  const maxSpan = useMemo(
+    () => startOptions.find((option) => option.startMin === startMin)?.maxSpan ?? 0,
+    [startOptions, startMin],
+  )
+
+  // Shorten the duration if the chosen start cannot support it.
+  useEffect(() => {
+    if (maxSpan > 0 && spanSlots > maxSpan) setSpanSlots(maxSpan)
+  }, [maxSpan, spanSlots])
+
+  const durationOptions = useMemo(
+    () =>
+      [1, 2, 3, 4]
+        .filter((count) => count <= maxSpan)
+        .map((count) => ({
+          count,
+          label:
+            count % 2 === 0
+              ? `${count / 2} hour${count > 2 ? 's' : ''}`
+              : `${count * SLOT_MINUTES} minutes`,
+        })),
+    [maxSpan],
+  )
 
   if (!open) return null
 
-  const { room, dateKey, startMin } = slot
-  const endMin = startMin + spanSlots * SLOT_MINUTES
+  const { room, dateKey } = booking
+  const endMin = startMin === null ? null : startMin + spanSlots * SLOT_MINUTES
 
   const groupSize = Number(form.groupSize)
   const validGroup = Number.isFinite(groupSize) && groupSize >= MIN_GROUP_SIZE
 
   const errors = {
+    startMin: startMin === null ? 'Choose a start time.' : null,
     studentName: form.studentName.trim() ? null : 'Your name is required.',
     studentId: form.studentId.trim() ? null : 'Student number is required.',
     groupSize: !validGroup
@@ -134,7 +150,6 @@ export default function BookingModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
-      {/* Backdrop */}
       <button
         type="button"
         aria-label="Close booking form"
@@ -142,7 +157,6 @@ export default function BookingModal({
         className="absolute inset-0 cursor-default bg-slate-900/40 backdrop-blur-sm animate-fade-in"
       />
 
-      {/* Panel */}
       <div
         role="dialog"
         aria-modal="true"
@@ -187,49 +201,88 @@ export default function BookingModal({
 
         <form onSubmit={handleSubmit}>
           <div className="space-y-5 px-6 py-5">
-            {/* Time summary */}
-            <div className="flex items-center gap-3 rounded-xl border border-brand-200/70 bg-brand-50/60 px-4 py-3">
-              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-white text-brand-600 shadow-sm ring-1 ring-brand-200/60">
-                <CalendarClock className="size-4.5" strokeWidth={2} />
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-900">
-                  {formatTime(startMin)} – {formatTime(endMin)}
-                </p>
-                <p className="truncate text-xs text-slate-500">
-                  {formatLongDate(fromDateKey(dateKey))}
+            {/* When */}
+            <div className="rounded-xl border border-slate-200/60 bg-slate-50/60 p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <Clock className="size-4 text-slate-400" strokeWidth={2} />
+                <p className="text-sm font-semibold text-slate-900">
+                  When do you need it?
                 </p>
               </div>
-            </div>
 
-            {/* Duration */}
-            <Field label="Duration">
-              <div className="flex flex-wrap gap-2">
-                {durationOptions.map(({ count, label }) => {
-                  const active = count === spanSlots
-                  return (
-                    <button
-                      key={count}
-                      type="button"
-                      onClick={() => setSpanSlots(count)}
-                      className={[
-                        'rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ease-in-out',
-                        active
-                          ? 'bg-brand-600 text-white shadow-sm shadow-brand-600/25'
-                          : 'bg-slate-100 text-slate-600 hover:-translate-y-0.5 hover:bg-slate-200 hover:text-slate-900',
-                      ].join(' ')}
-                    >
-                      {label}
-                    </button>
-                  )
-                })}
-              </div>
-              {slot.maxSpan < 4 && (
-                <p className="mt-2 text-xs text-slate-400">
-                  Limited by the next booking on this room.
+              {startOptions.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  This room has no free time left on{' '}
+                  {formatLongDate(fromDateKey(dateKey))}.
                 </p>
+              ) : (
+                <>
+                  <Field label="Start time" error={showError('startMin')}>
+                    <select
+                      value={startMin ?? ''}
+                      onChange={(event) => setStartMin(Number(event.target.value))}
+                      className={inputClass(showError('startMin'))}
+                    >
+                      <option value="" disabled>
+                        Select a start time…
+                      </option>
+                      {startOptions.map((option) => (
+                        <option key={option.startMin} value={option.startMin}>
+                          {formatTime(option.startMin)}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+
+                  <Field label="Duration" className="mt-3">
+                    <div className="flex flex-wrap gap-2">
+                      {durationOptions.map(({ count, label }) => {
+                        const active = count === spanSlots
+                        return (
+                          <button
+                            key={count}
+                            type="button"
+                            onClick={() => setSpanSlots(count)}
+                            className={[
+                              'rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ease-in-out',
+                              active
+                                ? 'bg-brand-600 text-white shadow-sm shadow-brand-600/25'
+                                : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:-translate-y-0.5 hover:bg-slate-100 hover:text-slate-900',
+                            ].join(' ')}
+                          >
+                            {label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {maxSpan > 0 && maxSpan < 4 && (
+                      <p className="mt-2 text-xs text-slate-400">
+                        Capped at {maxSpan * SLOT_MINUTES} minutes — the room is taken
+                        after that.
+                      </p>
+                    )}
+                  </Field>
+
+                  {endMin !== null && (
+                    <div className="mt-3 flex items-center gap-3 rounded-lg border border-brand-200/70 bg-white px-3.5 py-2.5">
+                      <CalendarClock
+                        className="size-4 shrink-0 text-brand-600"
+                        strokeWidth={2}
+                      />
+                      <p className="min-w-0 truncate text-sm">
+                        <span className="font-semibold text-slate-900">
+                          {formatTime(startMin)} – {formatTime(endMin)}
+                        </span>
+                        <span className="text-slate-500">
+                          {' '}
+                          · {formatLongDate(fromDateKey(dateKey))}
+                        </span>
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
-            </Field>
+            </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Full name" error={showError('studentName')}>
@@ -277,9 +330,7 @@ export default function BookingModal({
               disabled={saving}
             />
             {showError('photos') && (
-              <p className="-mt-3 text-xs font-medium text-rose-600">
-                {errors.photos}
-              </p>
+              <p className="-mt-3 text-xs font-medium text-rose-600">{errors.photos}</p>
             )}
 
             <Field label="Purpose" hint="Optional">
@@ -302,9 +353,7 @@ export default function BookingModal({
 
           <footer className="flex items-center justify-end gap-3 border-t border-slate-200/60 bg-slate-50/70 px-6 py-4">
             {saving && progress && (
-              <span className="mr-auto text-xs font-medium text-slate-500">
-                {progress}
-              </span>
+              <span className="mr-auto text-xs font-medium text-slate-500">{progress}</span>
             )}
             <button
               type="button"
@@ -316,7 +365,7 @@ export default function BookingModal({
             </button>
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || startOptions.length === 0}
               className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-brand-600/25 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-brand-700 hover:shadow-md hover:shadow-brand-600/30 active:translate-y-0 disabled:pointer-events-none disabled:opacity-60"
             >
               {saving ? (
@@ -340,9 +389,9 @@ export default function BookingModal({
 
 /* ---------- local presentational helpers ---------- */
 
-function Field({ label, hint, error, children }) {
+function Field({ label, hint, error, className = '', children }) {
   return (
-    <div>
+    <div className={className}>
       <div className="mb-1.5 flex items-baseline justify-between gap-2">
         <label className="text-sm font-medium text-slate-700">{label}</label>
         {hint && <span className="text-xs text-slate-400">{hint}</span>}

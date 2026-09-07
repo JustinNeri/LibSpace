@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Ban, ChevronRight, Monitor, Plug, PenLine, Users } from 'lucide-react'
-import { buildSlots, formatTime, parseTimeString, rangeToSpan } from '../lib/time'
+import { buildSlots, formatTime } from '../lib/time'
+import { buildLane, summarise } from '../lib/availability'
 
 const EQUIPMENT_ICONS = {
   Whiteboard: PenLine,
@@ -36,57 +37,29 @@ export default function RoomList({
     [dayWindow],
   )
 
-  /** room id -> { lane, free, openTotal, nextFree, ... } for the chosen day. */
+  /** room id -> lane + day summary. */
   const summaries = useMemo(() => {
     const map = new Map()
 
     for (const room of rooms) {
-      const schedule = schedules.find(
-        (row) => row.room_id === room.id && row.weekday === weekday,
-      )
-      const opens = schedule ? parseTimeString(schedule.opens_at) : null
-      const closes = schedule ? parseTimeString(schedule.closes_at) : null
-
-      const lane = slots.map((slot) => {
-        if (!schedule || slot.startMin < opens || slot.endMin > closes) return 'closed'
-        if (nowMinutes !== null && slot.endMin <= nowMinutes) return 'past'
-        return 'free'
+      const lane = buildLane({
+        room,
+        slots,
+        schedules,
+        blocks,
+        reservations,
+        weekday,
+        dayWindow,
+        nowMinutes,
       })
-
-      const occupy = (rows, label) => {
-        for (const row of rows) {
-          if (row.room_id !== room.id) continue
-          const placement = rangeToSpan(
-            row.start_time,
-            row.end_time,
-            dayWindow.startMin,
-            dayWindow.endMin,
-          )
-          if (!placement) continue
-          for (
-            let i = placement.startIndex;
-            i < placement.startIndex + placement.span;
-            i += 1
-          ) {
-            if (i >= 0 && i < lane.length && lane[i] !== 'closed') lane[i] = label
-          }
-        }
-      }
-
-      occupy(blocks, 'blocked')
-      occupy(reservations, 'booked')
-
-      const free = lane.filter((state) => state === 'free').length
-      const openTotal = lane.filter((state) => state !== 'closed').length
-      const firstFree = lane.findIndex((state) => state === 'free')
-
+      const summary = summarise(lane)
       map.set(room.id, {
         lane,
-        free,
-        openTotal,
-        closed: openTotal === 0,
-        fullyBooked: openTotal > 0 && free === 0,
-        nextFree: firstFree === -1 ? null : slots[firstFree].startMin,
+        ...summary,
+        nextFree:
+          summary.firstFreeIndex === null
+            ? null
+            : slots[summary.firstFreeIndex].startMin,
       })
     }
 
@@ -156,11 +129,11 @@ export default function RoomList({
 
             {/* One segment per half-hour block, so the day reads at a glance */}
             <div className="mt-4 flex gap-0.5" aria-hidden>
-              {summary.lane.map((state, index) => (
+              {summary.lane.map((cell, index) => (
                 <span
                   key={index}
-                  title={`${formatTime(slots[index].startMin)} · ${state}`}
-                  className={`h-1.5 flex-1 rounded-full ${SEGMENT_STYLES[state]}`}
+                  title={`${formatTime(slots[index].startMin)} · ${cell.state}`}
+                  className={`h-1.5 flex-1 rounded-full ${SEGMENT_STYLES[cell.state]}`}
                 />
               ))}
             </div>

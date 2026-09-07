@@ -1,13 +1,7 @@
 import { useMemo } from 'react'
 import { Ban, Lock, Plus, Users } from 'lucide-react'
-import {
-  MAX_BOOKING_SLOTS,
-  SLOT_MINUTES,
-  buildSlots,
-  formatTime,
-  parseTimeString,
-  rangeToSpan,
-} from '../lib/time'
+import { SLOT_MINUTES, buildSlots, formatTime } from '../lib/time'
+import { buildLane, freeSpanAt } from '../lib/availability'
 
 const ROOM_COL_WIDTH = 260 // px — sticky room rail
 const SLOT_MIN_WIDTH = 88 // px — keeps half-hours readable before it scrolls
@@ -49,77 +43,26 @@ export default function TimeslotGrid({
 
   /** room id -> per-slot occupancy, so each cell lookup is O(1). */
   const lanes = useMemo(() => {
-    const map = new Map(
-      rooms.map((room) => [room.id, Array(slots.length).fill(null)]),
-    )
-
-    // 1. Closed hours first — anything outside the room's schedule.
+    const map = new Map()
     for (const room of rooms) {
-      const lane = map.get(room.id)
-      const schedule = schedules.find(
-        (row) => row.room_id === room.id && row.weekday === weekday,
+      map.set(
+        room.id,
+        buildLane({
+          room,
+          slots,
+          schedules,
+          blocks,
+          reservations,
+          weekday,
+          dayWindow,
+          nowMinutes,
+        }),
       )
-
-      const opens = schedule ? parseTimeString(schedule.opens_at) : null
-      const closes = schedule ? parseTimeString(schedule.closes_at) : null
-
-      slots.forEach((slot, index) => {
-        const outside =
-          !schedule || slot.startMin < opens || slot.endMin > closes
-        if (outside) lane[index] = { type: 'closed' }
-      })
     }
-
-    // 2. Admin blocks override open hours.
-    for (const block of blocks) {
-      const lane = map.get(block.room_id)
-      if (!lane) continue
-      const placement = rangeToSpan(
-        block.start_time,
-        block.end_time,
-        dayWindow.startMin,
-        dayWindow.endMin,
-      )
-      if (!placement) continue
-      for (let i = placement.startIndex; i < placement.startIndex + placement.span; i += 1) {
-        if (i >= 0 && i < lane.length) lane[i] = { type: 'block', row: block }
-      }
-    }
-
-    // 3. Reservations sit on top.
-    for (const reservation of reservations) {
-      const lane = map.get(reservation.room_id)
-      if (!lane) continue
-      const placement = rangeToSpan(
-        reservation.start_time,
-        reservation.end_time,
-        dayWindow.startMin,
-        dayWindow.endMin,
-      )
-      if (!placement) continue
-      for (let i = placement.startIndex; i < placement.startIndex + placement.span; i += 1) {
-        if (i >= 0 && i < lane.length) {
-          lane[i] = { type: 'reservation', row: reservation }
-        }
-      }
-    }
-
     return map
-  }, [rooms, schedules, blocks, reservations, slots, weekday, dayWindow])
+  }, [rooms, schedules, blocks, reservations, slots, weekday, dayWindow, nowMinutes])
 
-  /** Free consecutive slots from `index`, capped at MAX_BOOKING_SLOTS. */
-  const availableSpan = (roomId, index) => {
-    const lane = lanes.get(roomId)
-    let span = 0
-    while (
-      span < MAX_BOOKING_SLOTS &&
-      index + span < slots.length &&
-      lane?.[index + span] === null
-    ) {
-      span += 1
-    }
-    return span
-  }
+  const availableSpan = (roomId, index) => freeSpanAt(lanes.get(roomId) ?? [], index)
 
   const nowOffset =
     nowMinutes !== null &&
@@ -233,7 +176,7 @@ function RoomRow({
   let cursor = 0
   while (cursor < slots.length) {
     const entry = lane?.[cursor]
-    if (entry && entry.type !== 'closed') {
+    if (entry && (entry.state === 'booked' || entry.state === 'blocked')) {
       let span = 1
       while (cursor + span < slots.length && lane[cursor + span] === entry) span += 1
       cards.push({ entry, startIndex: cursor, span })
@@ -281,7 +224,7 @@ function RoomRow({
             : 'border-l border-slate-100'
           const position = { gridColumn: `${slot.index + 1} / span 1`, gridRow: 1 }
 
-          if (entry?.type === 'closed') {
+          if (entry?.state === 'closed') {
             return (
               <div
                 key={slot.index}
@@ -292,7 +235,7 @@ function RoomRow({
             )
           }
 
-          if (entry) {
+          if (entry && entry.state !== 'free' && entry.state !== 'past') {
             return <div key={slot.index} style={position} className={edge} />
           }
 
@@ -323,7 +266,7 @@ function RoomRow({
 
         {/* Spanning cards */}
         {cards.map(({ entry, startIndex, span }) =>
-          entry.type === 'block' ? (
+          entry.state === 'blocked' ? (
             <BlockCard
               key={`block-${entry.row.id}`}
               block={entry.row}
