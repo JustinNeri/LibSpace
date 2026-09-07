@@ -11,12 +11,29 @@ real-time discussion-room availability and reserve a slot remotely.
 
 | | Student | Admin |
 |---|---|---|
-| Sign in | Gmail + 6-digit emailed code | same form, any email domain |
+| Sign in | email + password | email + password |
 | Availability grid | view + book | view + book |
 | Own bookings | view, cancel | sees **all** bookings |
 | Rooms | — | add, edit, retire |
 | Opening hours | — | set per room, per weekday |
 | Blocked time | — | block a room for maintenance |
+
+### Sign-up flow
+
+Registration verifies the Gmail address with a one-time code, then the user
+chooses their own password:
+
+```
+Gmail address  ->  6-digit code emailed  ->  code verified (session created)
+               ->  set password + name + student number  ->  signed in
+```
+
+From then on they sign in with **email + password**. "Forgot password" reuses
+the same code path and lands on the same password screen.
+
+`profiles.has_password` records whether that final step happened, so a user who
+closes the tab mid-registration is asked to finish it on their next visit
+rather than being left with an unusable account.
 
 Everyone signs up as a student. Promote a staff account by running this once,
 after they have signed in at least one time:
@@ -77,8 +94,8 @@ or changing one requires a redeploy.
 src/
 ├── App.jsx                     routes: auth gate -> profile setup -> workspace
 ├── components/
-│   ├── AuthGate.jsx            email -> 6-digit code
-│   ├── ProfileSetup.jsx        name + student number, first sign-in only
+│   ├── AuthGate.jsx            login · register · forgot password
+│   ├── AccountSetup.jsx        choose password (+ name, student number)
 │   ├── AppHeader.jsx           day nav, view switch, account menu
 │   ├── TimeslotGrid.jsx        rooms × half-hour grid
 │   ├── BookingModal.jsx        controlled booking form

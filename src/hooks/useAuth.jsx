@@ -16,6 +16,10 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  // Set when the user came in through "forgot password": they hold a valid
+  // session from the OTP, but must choose a new password before continuing.
+  const [resetRequested, setResetRequested] = useState(false)
+
   /* ---------------- session bootstrap ---------------- */
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -70,16 +74,33 @@ export function AuthProvider({ children }) {
     }
   }, [session, loadProfile])
 
-  /* ---------------- actions ---------------- */
+  /* ---------------- sign in ---------------- */
 
-  /** Email the 6-digit access code. Creates the account on first use. */
-  const requestCode = useCallback(async (email) => {
+  /** Returning users: email + the password they set on this app. */
+  const signIn = useCallback(async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    })
+
+    if (!error && data.session) setSession(data.session)
+    return { error }
+  }, [])
+
+  /* ---------------- OTP verification ---------------- */
+
+  /**
+   * Email a 6-digit code.
+   * @param {boolean} isNewAccount  false for password recovery, so the code
+   *                                is not sent to an address with no account.
+   */
+  const requestCode = useCallback(async (email, isNewAccount = true) => {
     const address = email.trim().toLowerCase()
 
     if (!isSupabaseConfigured) {
       return { error: { message: 'Supabase is not configured.' } }
     }
-    if (!isGmailAddress(address)) {
+    if (isNewAccount && !isGmailAddress(address)) {
       return {
         error: { message: `Please use a valid @${STUDENT_EMAIL_DOMAIN} address.` },
       }
@@ -87,7 +108,7 @@ export function AuthProvider({ children }) {
 
     const { error } = await supabase.auth.signInWithOtp({
       email: address,
-      options: { shouldCreateUser: true },
+      options: { shouldCreateUser: isNewAccount },
     })
 
     return { error }
@@ -105,19 +126,36 @@ export function AuthProvider({ children }) {
     return { data, error }
   }, [])
 
-  /** Fill in name + student number after the first sign-in. */
-  const completeProfile = useCallback(
-    async ({ fullName, studentId }) => {
+  const beginPasswordReset = useCallback(() => setResetRequested(true), [])
+
+  /* ---------------- account setup ---------------- */
+
+  /**
+   * Store the password the user chose, plus their details on first setup.
+   * `has_password` is what keeps them out of this screen next time.
+   */
+  const completeAccount = useCallback(
+    async ({ password, fullName, studentId }) => {
       if (!session?.user) return { error: { message: 'Not signed in.' } }
+
+      const { error: passwordError } = await supabase.auth.updateUser({ password })
+      if (passwordError) return { error: passwordError }
+
+      const patch = { has_password: true }
+      if (fullName !== undefined) patch.full_name = fullName.trim()
+      if (studentId !== undefined) patch.student_id = studentId.trim()
 
       const { data, error } = await supabase
         .from('profiles')
-        .update({ full_name: fullName.trim(), student_id: studentId.trim() })
+        .update(patch)
         .eq('id', session.user.id)
         .select()
         .single()
 
-      if (!error && data) setProfile(data)
+      if (!error && data) {
+        setProfile(data)
+        setResetRequested(false)
+      }
       return { data, error }
     },
     [session],
@@ -127,24 +165,45 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut()
     setSession(null)
     setProfile(null)
+    setResetRequested(false)
   }, [])
 
-  const value = useMemo(
-    () => ({
+  const value = useMemo(() => {
+    const authenticated = Boolean(session?.user)
+    // Anyone without a password, or without a name, still owes us a step.
+    const needsSetup =
+      authenticated &&
+      profile !== null &&
+      (!profile.has_password || !profile.full_name)
+
+    return {
       session,
       user: session?.user ?? null,
       profile,
       loading,
-      isAuthenticated: Boolean(session?.user),
+      isAuthenticated: authenticated,
       isAdmin: profile?.role === 'admin',
-      needsProfile: Boolean(session?.user) && profile !== null && !profile.full_name,
+      needsSetup: needsSetup || (authenticated && resetRequested),
+      resetRequested,
+      signIn,
       requestCode,
       verifyCode,
-      completeProfile,
+      beginPasswordReset,
+      completeAccount,
       signOut,
-    }),
-    [session, profile, loading, requestCode, verifyCode, completeProfile, signOut],
-  )
+    }
+  }, [
+    session,
+    profile,
+    loading,
+    resetRequested,
+    signIn,
+    requestCode,
+    verifyCode,
+    beginPasswordReset,
+    completeAccount,
+    signOut,
+  ])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

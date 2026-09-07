@@ -5,7 +5,7 @@ import AppHeader from './components/AppHeader'
 import AuthGate from './components/AuthGate'
 import BookingModal from './components/BookingModal'
 import MyReservations from './components/MyReservations'
-import ProfileSetup from './components/ProfileSetup'
+import AccountSetup from './components/AccountSetup'
 import TimeslotGrid from './components/TimeslotGrid'
 import Toast from './components/Toast'
 import { AuthProvider, useAuth } from './hooks/useAuth'
@@ -23,12 +23,12 @@ export default function App() {
 
 /** Auth state decides which of the three screens is mounted. */
 function Routes() {
-  const { loading, isAuthenticated, needsProfile } = useAuth()
+  const { loading, isAuthenticated, needsSetup } = useAuth()
 
   if (!isSupabaseConfigured) return <ConfigError />
   if (loading) return <FullPageSpinner />
   if (!isAuthenticated) return <AuthGate />
-  if (needsProfile) return <ProfileSetup />
+  if (needsSetup) return <AccountSetup />
   return <Workspace />
 }
 

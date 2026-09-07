@@ -16,6 +16,9 @@ create table if not exists public.profiles (
   student_id text        not null default '',
   role       text        not null default 'student'
                check (role in ('student', 'admin')),
+  -- Set once the user chooses their own password after OTP verification.
+  -- Drives the "finish your account" step on the next sign-in.
+  has_password boolean   not null default false,
   created_at timestamptz not null default now(),
 
   -- Students must register with a Gmail address; staff accounts may use
@@ -23,6 +26,9 @@ create table if not exists public.profiles (
   constraint students_must_use_gmail
     check (role <> 'student' or email ilike '%@gmail.com')
 );
+
+alter table public.profiles
+  add column if not exists has_password boolean not null default false;
 
 -- Role lookup used by every policy below. SECURITY DEFINER so that reading
 -- the caller's own role does not recurse through profiles' own RLS.
@@ -47,13 +53,14 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into public.profiles (id, email, full_name, student_id, role)
+  insert into public.profiles (id, email, full_name, student_id, role, has_password)
   values (
     new.id,
     new.email,
     coalesce(new.raw_user_meta_data ->> 'full_name', ''),
     coalesce(new.raw_user_meta_data ->> 'student_id', ''),
-    'student'
+    'student',
+    false
   )
   on conflict (id) do nothing;
   return new;
