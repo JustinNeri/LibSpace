@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { STUDENT_EMAIL_DOMAIN, isEmailAddress, isGmailAddress } from '../lib/validation'
+import { LIBRARY_NAME, UNIVERSITY_NAME } from '../lib/constants'
 
 // Supabase's "Email OTP Length" is configurable from 6 to 10 digits, so the
 // form accepts that whole range rather than assuming the default.
@@ -162,7 +163,10 @@ export default function AuthGate() {
             <span className="grid size-10 place-items-center rounded-xl bg-brand-600 text-white shadow-sm shadow-brand-600/25">
               <LibraryBig className="size-5" strokeWidth={2} />
             </span>
-            <p className="text-sm font-semibold tracking-tight text-slate-900">LibSpace</p>
+            <div>
+              <p className="text-sm font-semibold tracking-tight text-slate-900">LibSpace</p>
+              <p className="text-xs text-slate-500">{UNIVERSITY_NAME}</p>
+            </div>
           </div>
 
           {step === 'code' ? (
@@ -352,7 +356,10 @@ function BrandPanel() {
         <span className="grid size-10 place-items-center rounded-xl bg-brand-600 text-white shadow-lg shadow-brand-900/40">
           <LibraryBig className="size-5" strokeWidth={2} />
         </span>
-        <p className="text-sm font-semibold tracking-tight text-white">LibSpace</p>
+        <div>
+          <p className="text-sm font-semibold tracking-tight text-white">LibSpace</p>
+          <p className="text-xs text-slate-400">{UNIVERSITY_NAME}</p>
+        </div>
       </div>
 
       <div className="relative max-w-md">
@@ -381,7 +388,7 @@ function BrandPanel() {
       </div>
 
       <p className="relative text-xs text-slate-500">
-        Campus Library · Discussion Room Reservations
+        {UNIVERSITY_NAME} · {LIBRARY_NAME}
       </p>
     </aside>
   )

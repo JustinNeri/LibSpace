@@ -8,6 +8,7 @@ import {
 } from 'react'
 import { isSupabaseConfigured, supabase } from '../lib/supabaseClient'
 import { STUDENT_EMAIL_DOMAIN, isGmailAddress } from '../lib/validation'
+import { formatFullName } from '../lib/constants'
 
 const AuthContext = createContext(null)
 
@@ -154,17 +155,36 @@ export function AuthProvider({ children }) {
   /**
    * Store the password the user chose, plus their details on first setup.
    * `has_password` is what keeps them out of this screen next time.
+   *
+   * Recovery passes only `password`, so the profile fields are left alone.
    */
   const completeAccount = useCallback(
-    async ({ password, fullName, studentId }) => {
+    async ({
+      password,
+      lastName,
+      firstName,
+      middleInitial,
+      studentId,
+      yearLevel,
+      course,
+    }) => {
       if (!session?.user) return { error: { message: 'Not signed in.' } }
 
       const { error: passwordError } = await supabase.auth.updateUser({ password })
       if (passwordError) return { error: passwordError }
 
       const patch = { has_password: true }
-      if (fullName !== undefined) patch.full_name = fullName.trim()
+
+      if (lastName !== undefined) {
+        patch.last_name = lastName.trim()
+        patch.first_name = (firstName ?? '').trim()
+        patch.middle_initial = (middleInitial ?? '').trim().toUpperCase()
+        // Rendered once here so every read site can just use full_name.
+        patch.full_name = formatFullName({ lastName, firstName, middleInitial })
+      }
       if (studentId !== undefined) patch.student_id = studentId.trim()
+      if (yearLevel !== undefined) patch.year_level = yearLevel
+      if (course !== undefined) patch.course = course
 
       const { data, error } = await supabase
         .from('profiles')
@@ -195,7 +215,7 @@ export function AuthProvider({ children }) {
     const needsSetup =
       authenticated &&
       profile !== null &&
-      (!profile.has_password || !profile.full_name)
+      (!profile.has_password || !profile.last_name)
 
     return {
       session,

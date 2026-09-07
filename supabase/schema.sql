@@ -12,8 +12,15 @@ create extension if not exists "btree_gist";
 create table if not exists public.profiles (
   id         uuid primary key references auth.users (id) on delete cascade,
   email      text        not null,
-  full_name  text        not null default '',
-  student_id text        not null default '',
+  -- Name is stored in parts so it can be sorted and displayed consistently.
+  -- `full_name` holds the rendered "Dela Cruz, Juan M." form the app writes.
+  last_name      text    not null default '',
+  first_name     text    not null default '',
+  middle_initial text    not null default '',
+  full_name      text    not null default '',
+  student_id     text    not null default '',
+  year_level     text    not null default '',
+  course         text    not null default '',
   role       text        not null default 'student'
                check (role in ('student', 'admin')),
   -- Set once the user chooses their own password after OTP verification.
@@ -27,8 +34,14 @@ create table if not exists public.profiles (
     check (role <> 'student' or email ilike '%@gmail.com')
 );
 
+-- Idempotent upgrades for projects created before these columns existed.
 alter table public.profiles
-  add column if not exists has_password boolean not null default false;
+  add column if not exists has_password   boolean not null default false,
+  add column if not exists last_name      text    not null default '',
+  add column if not exists first_name     text    not null default '',
+  add column if not exists middle_initial text    not null default '',
+  add column if not exists year_level     text    not null default '',
+  add column if not exists course         text    not null default '';
 
 -- Role lookup used by every policy below. SECURITY DEFINER so that reading
 -- the caller's own role does not recurse through profiles' own RLS.
@@ -53,15 +66,8 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into public.profiles (id, email, full_name, student_id, role, has_password)
-  values (
-    new.id,
-    new.email,
-    coalesce(new.raw_user_meta_data ->> 'full_name', ''),
-    coalesce(new.raw_user_meta_data ->> 'student_id', ''),
-    'student',
-    false
-  )
+  insert into public.profiles (id, email, role, has_password)
+  values (new.id, new.email, 'student', false)
   on conflict (id) do nothing;
   return new;
 end;
@@ -71,6 +77,13 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- Accounts created before this schema ran never fired the trigger, so give
+-- them a profile too. They land on the "finish your account" screen.
+insert into public.profiles (id, email, role, has_password)
+select u.id, u.email, 'student', false
+from auth.users u
+on conflict (id) do nothing;
 
 -- A student must never be able to promote themselves to admin.
 create or replace function public.guard_role_change()
@@ -293,15 +306,20 @@ exception when duplicate_object then null;
 end $$;
 
 -- ============================================================================
--- SEED — 5 rooms, open Mon–Sat 08:00–17:00
+-- SEED — Holy Angel University: 10 discussion rooms, Mon–Sat 08:00–17:00
 -- ============================================================================
 insert into public.rooms (name, capacity, equipment)
 values
-  ('DR-101 · Quiet Study', 6,  '{Whiteboard,Outlets}'),
-  ('DR-102 · Collab Pod',  8,  '{Display,Whiteboard,Outlets}'),
-  ('DR-201 · Media Room',  10, '{Display,Outlets}'),
-  ('DR-202 · Seminar',     12, '{Whiteboard,Display}'),
-  ('DR-203 · Focus Booth', 4,  '{Outlets}')
+  ('DR-01 · Quiet Study',    6,  '{Whiteboard,Outlets}'),
+  ('DR-02 · Collab Pod',     8,  '{Display,Whiteboard,Outlets}'),
+  ('DR-03 · Focus Booth',    4,  '{Outlets}'),
+  ('DR-04 · Group Study',    8,  '{Whiteboard,Outlets}'),
+  ('DR-05 · Media Room',     10, '{Display,Outlets}'),
+  ('DR-06 · Seminar Room',   12, '{Whiteboard,Display,Outlets}'),
+  ('DR-07 · Thesis Room',    6,  '{Whiteboard,Display,Outlets}'),
+  ('DR-08 · Review Room',    10, '{Whiteboard,Outlets}'),
+  ('DR-09 · Presentation',   12, '{Display,Outlets}'),
+  ('DR-10 · Consultation',   4,  '{Whiteboard,Outlets}')
 on conflict do nothing;
 
 insert into public.room_schedules (room_id, weekday, opens_at, closes_at)

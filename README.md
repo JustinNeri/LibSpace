@@ -1,7 +1,8 @@
 # LibSpace
 
-Replaces the physical logbook at the campus library by letting students check
-real-time discussion-room availability and reserve a slot remotely.
+Replaces the physical logbook at the **Holy Angel University** library by
+letting students check real-time discussion-room availability and reserve one
+of the 10 discussion rooms remotely.
 
 **Stack** — React 19 (Vite) · Tailwind CSS v4 · Supabase (Postgres + Auth + Realtime) · Vercel
 
@@ -24,9 +25,18 @@ Registration verifies the Gmail address with a one-time code, then the user
 chooses their own password:
 
 ```
-Gmail address  ->  6-digit code emailed  ->  code verified (session created)
-               ->  set password + name + student number  ->  signed in
+Gmail address  ->  access code emailed  ->  code verified (session created)
+               ->  name, student no., year, course + password  ->  signed in
 ```
+
+Registration collects **Last name, First name, M.I.** as separate fields (stored
+that way so names sort correctly), the **student number**, **year level** and
+**course**. `full_name` holds the rendered "Dela Cruz, Juan M." form that the
+grid and reservation records display.
+
+Year levels and the course list live in
+[`src/lib/constants.js`](src/lib/constants.js) — edit that one file to change
+them, along with the university name shown throughout the UI.
 
 From then on they sign in with **email + password**. "Forgot password" reuses
 the same code path and lands on the same password screen.
@@ -57,8 +67,8 @@ npm run dev
 
 **1. Run the schema.** Paste [`supabase/schema.sql`](supabase/schema.sql) into the
 SQL editor. It creates `profiles`, `rooms`, `room_schedules`, `room_blocks` and
-`reservations`, plus RLS policies, the Realtime publication, and 5 seeded rooms
-open Mon–Sat 08:00–17:00.
+`reservations`, plus RLS policies, the Realtime publication, and the 10 seeded
+discussion rooms open Mon–Sat 08:00–17:00.
 
 **2. Switch the email template to a code.** By default Supabase emails a magic
 *link*, but this app asks for a 6-digit *code*. Go to
@@ -95,7 +105,7 @@ src/
 ├── App.jsx                     routes: auth gate -> profile setup -> workspace
 ├── components/
 │   ├── AuthGate.jsx            login · register · forgot password
-│   ├── AccountSetup.jsx        choose password (+ name, student number)
+│   ├── AccountSetup.jsx        name, student no., year, course + password
 │   ├── AppHeader.jsx           day nav, view switch, account menu
 │   ├── TimeslotGrid.jsx        rooms × half-hour grid
 │   ├── BookingModal.jsx        controlled booking form
@@ -108,6 +118,7 @@ src/
 └── lib/
     ├── supabaseClient.js
     ├── time.js                 slot maths — single source of truth for the day
+    ├── constants.js            university name, year levels, course list
     └── validation.js
 ```
 

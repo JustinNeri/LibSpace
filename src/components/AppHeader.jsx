@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { addDays, formatLongDate, isSameDay, toDateKey } from '../lib/time'
+import { UNIVERSITY_SHORT } from '../lib/constants'
 
 /**
  * Sticky application bar: brand, day navigation, view switch and account menu.
@@ -48,7 +49,9 @@ export default function AppHeader({ date, onChangeDate, view, onChangeView }) {
           </span>
           <div>
             <p className="text-sm font-semibold tracking-tight text-slate-900">LibSpace</p>
-            <p className="text-xs text-slate-500">Discussion room reservations</p>
+            <p className="text-xs text-slate-500">
+              {UNIVERSITY_SHORT} · Discussion rooms
+            </p>
           </div>
         </div>
 
@@ -131,10 +134,16 @@ export default function AppHeader({ date, onChangeDate, view, onChangeView }) {
                       </span>
                     ) : (
                       <span className="rounded-md bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-600">
-                        Student · {profile?.student_id || 'no ID'}
+                        {profile?.student_id || 'Student'}
                       </span>
                     )}
                   </div>
+
+                  {!isAdmin && (profile?.course || profile?.year_level) && (
+                    <p className="mt-2 truncate text-xs text-slate-500">
+                      {[profile.year_level, profile.course].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
                 </div>
 
                 <button
