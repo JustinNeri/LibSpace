@@ -86,7 +86,7 @@ export default function MyReservations({ onCancelled }) {
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-2xl border border-slate-200/60 bg-white p-16 text-center shadow-sm">
+      <div className="surface p-16 text-center">
         <span className="mx-auto grid size-11 place-items-center rounded-xl bg-slate-100 text-slate-400">
           <CalendarX2 className="size-5" strokeWidth={2} />
         </span>
@@ -113,7 +113,7 @@ export default function MyReservations({ onCancelled }) {
         return (
           <div
             key={row.id}
-            className="flex flex-wrap items-center gap-4 rounded-xl border border-slate-200/60 bg-white px-5 py-4 shadow-sm transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:border-slate-300/70 hover:shadow-md"
+            className="surface surface-hover flex flex-wrap items-center gap-4 px-5 py-4"
           >
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">

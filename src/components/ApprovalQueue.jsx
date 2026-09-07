@@ -98,7 +98,7 @@ export default function ApprovalQueue({ onDecided }) {
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-2xl border border-slate-200/60 bg-white p-16 text-center shadow-sm">
+      <div className="surface p-16 text-center">
         <span className="mx-auto grid size-11 place-items-center rounded-xl bg-emerald-50 text-emerald-600">
           <Inbox className="size-5" strokeWidth={2} />
         </span>
@@ -127,7 +127,7 @@ export default function ApprovalQueue({ onDecided }) {
         return (
           <article
             key={row.id}
-            className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-sm"
+            className="surface overflow-hidden"
           >
             <div className="flex flex-wrap items-start justify-between gap-4 p-5">
               <div className="min-w-0 flex-1">

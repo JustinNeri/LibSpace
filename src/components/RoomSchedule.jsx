@@ -131,7 +131,7 @@ export default function RoomSchedule({
         All rooms
       </button>
 
-      <div className="rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm">
+      <div className="surface p-6">
         {/* Room identity */}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>

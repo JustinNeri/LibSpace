@@ -43,12 +43,55 @@
   }
 
   body {
-    @apply bg-slate-50 text-slate-900;
+    @apply text-slate-900;
+    background-color: var(--color-slate-50);
+    /* Two soft brand-tinted washes lift the page off flat grey without
+       competing with the content sitting on top of it. */
+    background-image:
+      radial-gradient(
+        1100px 520px at 85% -8%,
+        oklch(0.585 0.203 277.1 / 0.11),
+        transparent 62%
+      ),
+      radial-gradient(
+        820px 440px at -5% 2%,
+        oklch(0.673 0.162 276.9 / 0.08),
+        transparent 58%
+      );
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+  }
+
+  /* Times and counts line up in columns when digits share a width. */
+  time,
+  .tnum {
+    font-variant-numeric: tabular-nums;
   }
 
   /* Focus rings that match the brand rather than the browser default. */
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-brand-500;
+  }
+}
+
+@layer components {
+  /* The standard raised surface. Two stacked shadows read as depth rather
+     than the single flat drop shadow used everywhere before. */
+  .surface {
+    @apply rounded-2xl border border-white/70 bg-white/85 backdrop-blur-xl;
+    box-shadow:
+      0 1px 2px oklch(0.21 0.03 265 / 0.04),
+      0 8px 24px -12px oklch(0.21 0.03 265 / 0.12);
+  }
+
+  .surface-hover {
+    @apply transition-all duration-200 ease-in-out;
+  }
+  .surface-hover:hover {
+    @apply -translate-y-0.5 border-brand-200;
+    box-shadow:
+      0 1px 2px oklch(0.21 0.03 265 / 0.05),
+      0 16px 32px -14px oklch(0.511 0.222 277 / 0.28);
   }
 }
 

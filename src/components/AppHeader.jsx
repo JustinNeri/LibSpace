@@ -41,11 +41,11 @@ export default function AppHeader({ date, onChangeDate, view, onChangeView }) {
     .join('')
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200/60 bg-white/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-white/60 bg-white/70 backdrop-blur-xl">
       <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-4 px-6 py-4">
         {/* Brand */}
         <div className="flex items-center gap-3">
-          <span className="grid size-10 place-items-center rounded-xl bg-brand-600 text-white shadow-sm shadow-brand-600/25">
+          <span className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-sm shadow-brand-600/30">
             <LibraryBig className="size-5" strokeWidth={2} />
           </span>
           <div>

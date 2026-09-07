@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Ban, ChevronRight, Monitor, Plug, PenLine, Users } from 'lucide-react'
+import { ArrowUpRight, Monitor, Plug, PenLine, Users } from 'lucide-react'
 import { buildSlots, formatTime } from '../lib/time'
 import { buildLane, summarise } from '../lib/availability'
 
@@ -18,9 +18,15 @@ const SEGMENT_STYLES = {
   closed: 'bg-slate-100',
 }
 
+/** "DR-7" -> "07", so every badge is the same width. */
+function roomNumber(name) {
+  const digits = name.match(/\d+/)?.[0]
+  return digits ? digits.padStart(2, '0') : name.slice(0, 2).toUpperCase()
+}
+
 /**
- * Room-first browse view: every discussion room as a card with a bar showing
- * how the day is filling up. Selecting one opens its schedule.
+ * Room-first browse view. Each card leads with the room number so the grid
+ * is scannable at a glance, and carries a bar showing how the day fills up.
  */
 export default function RoomList({
   rooms,
@@ -38,7 +44,6 @@ export default function RoomList({
     [dayWindow],
   )
 
-  /** room id -> lane + day summary. */
   const summaries = useMemo(() => {
     const map = new Map()
 
@@ -54,9 +59,20 @@ export default function RoomList({
         nowMinutes,
       })
       const summary = summarise(lane)
+
+      // "Free now" needs the block containing the current minute, not just
+      // any free block later in the day.
+      const currentIndex =
+        nowMinutes === null
+          ? -1
+          : slots.findIndex(
+              (slot) => nowMinutes >= slot.startMin && nowMinutes < slot.endMin,
+            )
+
       map.set(room.id, {
         lane,
         ...summary,
+        freeNow: currentIndex !== -1 && lane[currentIndex]?.state === 'free',
         nextFree:
           summary.firstFreeIndex === null
             ? null
@@ -71,10 +87,7 @@ export default function RoomList({
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, index) => (
-          <div
-            key={index}
-            className="h-48 animate-pulse rounded-2xl border border-slate-200/60 bg-white"
-          />
+          <div key={index} className="surface h-48 animate-pulse" />
         ))}
       </div>
     )
@@ -82,7 +95,7 @@ export default function RoomList({
 
   if (rooms.length === 0) {
     return (
-      <div className="rounded-2xl border border-slate-200/60 bg-white p-16 text-center shadow-sm">
+      <div className="surface p-16 text-center">
         <p className="text-sm font-medium text-slate-900">No discussion rooms yet</p>
         <p className="mt-1 text-sm text-slate-500">
           An administrator needs to add rooms before anything can be booked.
@@ -97,11 +110,7 @@ export default function RoomList({
         const summary = summaries.get(room.id)
         if (!summary) return null
 
-        const status = summary.closed
-          ? { label: 'Closed today', tone: 'closed' }
-          : summary.fullyBooked
-            ? { label: 'Fully booked', tone: 'full' }
-            : { label: `${summary.free} of ${summary.openTotal} slots free`, tone: 'open' }
+        const unavailable = summary.closed || summary.fullyBooked
 
         return (
           <button
@@ -109,53 +118,94 @@ export default function RoomList({
             type="button"
             onClick={() => onSelectRoom(room)}
             disabled={summary.closed}
-            aria-label={`${room.name} — ${status.label}`}
-            className="group flex flex-col rounded-2xl border border-slate-200/60 bg-white p-5 text-left shadow-sm transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:border-brand-300/70 hover:shadow-md disabled:pointer-events-none disabled:opacity-60"
+            aria-label={`${room.name}, ${summary.free} slots free`}
+            className="surface surface-hover group relative overflow-hidden p-5 text-left disabled:pointer-events-none disabled:opacity-55"
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate text-lg font-semibold tracking-tight text-slate-900">
-                  {room.name}
-                </p>
-                <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-slate-500">
+            {/* Brand wash that warms on hover */}
+            <span
+              aria-hidden
+              className="pointer-events-none absolute -top-16 -right-16 size-40 rounded-full bg-brand-500/8 blur-2xl transition-all duration-300 ease-in-out group-hover:bg-brand-500/16"
+            />
+
+            <div className="relative flex items-start gap-3.5">
+              {/* Room number as the visual anchor */}
+              <span
+                className={[
+                  'tnum grid size-12 shrink-0 place-items-center rounded-xl text-base font-bold transition-colors duration-200',
+                  unavailable
+                    ? 'bg-slate-100 text-slate-400'
+                    : 'bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-sm shadow-brand-600/30',
+                ].join(' ')}
+              >
+                {roomNumber(room.name)}
+              </span>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="truncate text-base font-semibold tracking-tight text-slate-900">
+                    {room.name}
+                  </p>
+                  {summary.freeNow && (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold tracking-wide text-emerald-700 uppercase">
+                      <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
+                      Now
+                    </span>
+                  )}
+                </div>
+                <p className="mt-0.5 inline-flex items-center gap-1.5 text-sm text-slate-500">
                   <Users className="size-3.5" strokeWidth={2} />
-                  Seats up to {room.capacity}
+                  Up to {room.capacity} people
                 </p>
               </div>
-              <ChevronRight
-                className="mt-1 size-4 shrink-0 text-slate-300 transition-all duration-200 ease-in-out group-hover:translate-x-0.5 group-hover:text-brand-500"
+
+              <ArrowUpRight
+                className="size-4 shrink-0 text-slate-300 transition-all duration-200 ease-in-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-brand-500"
                 strokeWidth={2.5}
               />
             </div>
 
-            {/* One segment per half-hour block, so the day reads at a glance */}
-            <div className="mt-4 flex gap-0.5" aria-hidden>
-              {summary.lane.map((cell, index) => (
-                <span
-                  key={index}
-                  title={`${formatTime(slots[index].startMin)} · ${cell.state}`}
-                  className={`h-1.5 flex-1 rounded-full ${SEGMENT_STYLES[cell.state]}`}
-                />
-              ))}
-            </div>
+            {/* Day at a glance */}
+            <div className="relative mt-5">
+              <div className="flex gap-[3px]" aria-hidden>
+                {summary.lane.map((cell, index) => (
+                  <span
+                    key={index}
+                    title={`${formatTime(slots[index].startMin)} · ${cell.state}`}
+                    className={`h-2 flex-1 rounded-full ${SEGMENT_STYLES[cell.state]}`}
+                  />
+                ))}
+              </div>
 
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <StatusPill tone={status.tone}>{status.label}</StatusPill>
-              {status.tone === 'open' && summary.nextFree !== null && (
-                <span className="text-xs text-slate-500">
-                  next free {formatTime(summary.nextFree)}
-                </span>
-              )}
+              <div className="mt-2.5 flex items-baseline justify-between gap-2">
+                {summary.closed ? (
+                  <span className="text-sm font-medium text-slate-400">Closed today</span>
+                ) : summary.fullyBooked ? (
+                  <span className="text-sm font-medium text-slate-500">Fully booked</span>
+                ) : (
+                  <span className="text-sm text-slate-500">
+                    <span className="tnum text-base font-bold text-slate-900">
+                      {summary.free}
+                    </span>{' '}
+                    of {summary.openTotal} slots free
+                  </span>
+                )}
+
+                {!summary.closed && summary.nextFree !== null && !summary.freeNow && (
+                  <span className="tnum shrink-0 text-xs font-medium text-slate-400">
+                    from {formatTime(summary.nextFree)}
+                  </span>
+                )}
+              </div>
             </div>
 
             {room.equipment?.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-1.5 border-t border-slate-200/60 pt-4">
+              <div className="relative mt-4 flex flex-wrap gap-1.5 border-t border-slate-200/70 pt-4">
                 {room.equipment.map((item) => {
                   const Icon = EQUIPMENT_ICONS[item]
                   return (
                     <span
                       key={item}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-600"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100/80 px-2 py-1 text-[11px] font-medium text-slate-600"
                     >
                       {Icon && <Icon className="size-3" strokeWidth={2} />}
                       {item}
@@ -168,21 +218,5 @@ export default function RoomList({
         )
       })}
     </div>
-  )
-}
-
-function StatusPill({ tone, children }) {
-  const styles = {
-    open: 'bg-emerald-50 text-emerald-700',
-    full: 'bg-slate-100 text-slate-600',
-    closed: 'bg-slate-100 text-slate-500',
-  }
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold ${styles[tone]}`}
-    >
-      {tone === 'closed' && <Ban className="size-3" strokeWidth={2.5} />}
-      {children}
-    </span>
   )
 }

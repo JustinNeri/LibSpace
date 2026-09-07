@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AlertCircle, Loader2 } from 'lucide-react'
 import AdminPanel from './components/AdminPanel'
 import ApprovalQueue from './components/ApprovalQueue'
+import DaySummary from './components/DaySummary'
 import AppHeader from './components/AppHeader'
 import AuthGate from './components/AuthGate'
 import BookingModal from './components/BookingModal'
@@ -147,7 +148,7 @@ function Workspace() {
 
       <main className="mx-auto max-w-[1400px] px-6 py-8">
         <div className="mb-6">
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
             {view === 'rooms' && (activeRoom ? activeRoom.name : 'Discussion rooms')}
             {view === 'grid' && 'Room availability'}
             {view === 'mine' && (isAdmin ? 'All upcoming bookings' : 'My bookings')}
@@ -183,6 +184,20 @@ function Workspace() {
               ?
             </p>
           </div>
+        )}
+
+        {view === 'rooms' && !activeRoom && (
+          <DaySummary
+            rooms={rooms}
+            reservations={reservations}
+            blocks={blocks}
+            schedules={schedules}
+            dayWindow={dayWindow}
+            weekday={weekday}
+            nowMinutes={nowMinutes}
+            currentUserId={user.id}
+            loading={loading}
+          />
         )}
 
         {view === 'rooms' &&
