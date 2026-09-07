@@ -14,15 +14,18 @@ import {
 import { useAuth } from '../hooks/useAuth'
 import { STUDENT_EMAIL_DOMAIN, isEmailAddress, isGmailAddress } from '../lib/validation'
 
-const CODE_LENGTH = 6
+// Supabase's "Email OTP Length" is configurable from 6 to 10 digits, so the
+// form accepts that whole range rather than assuming the default.
+const MIN_CODE_LENGTH = 6
+const MAX_CODE_LENGTH = 10
 const RESEND_SECONDS = 60
 
 /**
  * Login, registration and password recovery.
  *
  *   login     email + password
- *   register  Gmail -> 6-digit code -> (AccountSetup takes over)
- *   forgot    email -> 6-digit code -> (AccountSetup takes over)
+ *   register  Gmail -> emailed code -> (AccountSetup takes over)
+ *   forgot    email -> emailed code -> (AccountSetup takes over)
  *
  * Verifying a code signs the user in. Choosing a password happens on the
  * next screen, which App mounts because `needsSetup` is true.
@@ -124,8 +127,8 @@ export default function AuthGate() {
     event.preventDefault()
     setError(null)
 
-    if (code.trim().length !== CODE_LENGTH) {
-      setError(`Enter the ${CODE_LENGTH}-digit code from your email.`)
+    if (code.trim().length < MIN_CODE_LENGTH) {
+      setError('That code looks too short — check your email and retype it.')
       return
     }
 
@@ -178,7 +181,7 @@ export default function AuthGate() {
                 Check your inbox
               </h2>
               <p className="mt-2 text-sm text-slate-500">
-                We sent a {CODE_LENGTH}-digit code to{' '}
+                We sent an access code to{' '}
                 <span className="font-medium text-slate-900">{email}</span>. It expires in
                 one hour.
               </p>
@@ -189,13 +192,13 @@ export default function AuthGate() {
                 type="text"
                 inputMode="numeric"
                 autoComplete="one-time-code"
-                maxLength={CODE_LENGTH}
+                maxLength={MAX_CODE_LENGTH}
                 value={code}
                 onChange={(event) =>
-                  setCode(event.target.value.replace(/\D/g, '').slice(0, CODE_LENGTH))
+                  setCode(event.target.value.replace(/\D/g, '').slice(0, MAX_CODE_LENGTH))
                 }
                 placeholder="000000"
-                className="mt-1.5 w-full rounded-xl border border-slate-200/80 bg-white px-4 py-3 text-center font-mono text-2xl tracking-[0.4em] text-slate-900 shadow-sm transition-all duration-200 ease-in-out placeholder:text-slate-300 hover:border-slate-300 focus:border-brand-400 focus:ring-4 focus:ring-brand-500/10 focus:outline-none"
+                className="mt-1.5 w-full rounded-xl border border-slate-200/80 bg-white px-4 py-3 text-center font-mono text-2xl tracking-[0.3em] text-slate-900 shadow-sm transition-all duration-200 ease-in-out placeholder:text-slate-300 hover:border-slate-300 focus:border-brand-400 focus:ring-4 focus:ring-brand-500/10 focus:outline-none"
               />
 
               {error && <ErrorNote>{error}</ErrorNote>}
@@ -287,8 +290,8 @@ export default function AuthGate() {
               </h2>
               <p className="mt-2 text-sm text-slate-500">
                 {mode === 'register'
-                  ? `Register with your ${STUDENT_EMAIL_DOMAIN} address. We'll email a ${CODE_LENGTH}-digit code to verify it, then you pick your own password.`
-                  : `We'll email a ${CODE_LENGTH}-digit code so you can set a new password.`}
+                  ? `Register with your ${STUDENT_EMAIL_DOMAIN} address. We'll email an access code to verify it, then you pick your own password.`
+                  : `We'll email an access code so you can set a new password.`}
               </p>
 
               <Label>{mode === 'register' ? 'Gmail address' : 'Email'}</Label>
