@@ -171,7 +171,16 @@ export function AuthProvider({ children }) {
       if (!session?.user) return { error: { message: 'Not signed in.' } }
 
       const { error: passwordError } = await supabase.auth.updateUser({ password })
-      if (passwordError) return { error: passwordError }
+
+      // "Same as the old password" means the password is already what the
+      // user wants — that happens when an earlier attempt set it but failed
+      // before the profile saved. Treat it as done and carry on, otherwise
+      // a retry can never succeed.
+      const alreadySet = passwordError?.message
+        ?.toLowerCase()
+        .includes('should be different from the old password')
+
+      if (passwordError && !alreadySet) return { error: passwordError }
 
       const patch = { has_password: true }
 
@@ -188,8 +197,10 @@ export function AuthProvider({ children }) {
 
       const { data, error } = await supabase
         .from('profiles')
-        .update(patch)
-        .eq('id', session.user.id)
+        .upsert(
+          { id: session.user.id, email: session.user.email, ...patch },
+          { onConflict: 'id' },
+        )
         .select()
         .single()
 
