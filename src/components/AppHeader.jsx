@@ -7,6 +7,7 @@ import {
   LogOut,
   ShieldCheck,
 } from 'lucide-react'
+import NotificationBell from './NotificationBell'
 import { useAuth } from '../hooks/useAuth'
 import { addDays, formatLongDate, isSameDay, toDateKey } from '../lib/time'
 import { UNIVERSITY_SHORT } from '../lib/constants'
@@ -104,11 +105,21 @@ export default function AppHeader({ date, onChangeDate, view, onChangeView }) {
               My bookings
             </ViewTab>
             {isAdmin && (
-              <ViewTab active={view === 'admin'} onClick={() => onChangeView('admin')}>
-                Manage
-              </ViewTab>
+              <>
+                <ViewTab
+                  active={view === 'requests'}
+                  onClick={() => onChangeView('requests')}
+                >
+                  Requests
+                </ViewTab>
+                <ViewTab active={view === 'admin'} onClick={() => onChangeView('admin')}>
+                  Manage
+                </ViewTab>
+              </>
             )}
           </div>
+
+          <NotificationBell />
 
           {/* Account */}
           <div className="relative" ref={menuRef}>

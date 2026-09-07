@@ -11,6 +11,7 @@ const EQUIPMENT_ICONS = {
 
 const SEGMENT_STYLES = {
   free: 'bg-emerald-400',
+  pending: 'bg-slate-300',
   booked: 'bg-slate-300',
   blocked: 'bg-amber-300',
   past: 'bg-slate-200',

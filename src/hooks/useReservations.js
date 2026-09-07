@@ -54,7 +54,8 @@ export function useReservations(dateKey) {
         supabase
           .from('reservations')
           .select('*')
-          .eq('status', 'active')
+          // A pending request holds its slot until staff decide.
+          .in('status', ['pending', 'approved'])
           .lt('start_time', dayEnd)
           .gt('end_time', dayStart),
       ])
@@ -112,7 +113,10 @@ export function useReservations(dateKey) {
             setReservations((current) => current.filter((item) => item.id !== old.id))
             return
           }
-          upsertReservation(row, row.status === 'active' && sameDay(row))
+          upsertReservation(
+            row,
+            ['pending', 'approved'].includes(row.status) && sameDay(row),
+          )
         },
       )
       .on(
@@ -190,7 +194,7 @@ export function useReservations(dateKey) {
           group_size: groupSize,
           purpose: purpose || null,
           id_photos: uploaded,
-          status: 'active',
+          status: 'pending',
           start_time: dateAtMinutes(day, startMin).toISOString(),
           end_time: dateAtMinutes(day, endMin).toISOString(),
         })

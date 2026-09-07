@@ -11,7 +11,8 @@ import { MAX_BOOKING_SLOTS, parseTimeString, rangeToSpan } from './time'
  *   closed   outside the admin's opening hours for this weekday
  *   past     already elapsed (only when viewing today)
  *   blocked  an admin block
- *   booked   an active reservation
+ *   pending  a request awaiting staff approval
+ *   booked   an approved reservation
  *   free     bookable
  *
  * @returns {Array<{state: string, row?: object}>} one entry per slot
@@ -66,7 +67,16 @@ export function buildLane({
   }
 
   occupy(blocks, 'blocked')
-  occupy(reservations, 'booked')
+  // Pending requests hold the slot, but read differently to the student:
+  // the room is spoken for, not yet confirmed.
+  occupy(
+    reservations.filter((row) => row.status === 'pending'),
+    'pending',
+  )
+  occupy(
+    reservations.filter((row) => row.status !== 'pending'),
+    'booked',
+  )
 
   return lane
 }

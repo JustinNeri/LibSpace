@@ -170,8 +170,11 @@ create table if not exists public.reservations (
   id_photos    text[]      not null default '{}',
   start_time   timestamptz not null,
   end_time     timestamptz not null,
-  status       text        not null default 'active'
-                 check (status in ('active', 'cancelled')),
+  status       text        not null default 'pending'
+                 check (status in ('pending', 'approved', 'rejected', 'cancelled')),
+  rejection_reason text,
+  reviewed_by  uuid        references auth.users (id) on delete set null,
+  reviewed_at  timestamptz,
   created_at   timestamptz not null default now(),
   constraint reservations_time_order check (end_time > start_time)
 );
@@ -197,7 +200,7 @@ alter table public.reservations
   exclude using gist (
     room_id with =,
     tstzrange(start_time, end_time, '[)') with &&
-  ) where (status = 'active');
+  ) where (status in ('pending', 'approved'));
 
 -- A booking may not land on top of an admin block.
 create or replace function public.reject_blocked_reservation()
@@ -298,9 +301,10 @@ drop policy if exists "admins manage reservations" on public.reservations;
 create policy "anyone reads reservations" on public.reservations
   for select to authenticated using (true);
 
+-- Students may only ever file a pending request; staff decide the rest.
 create policy "students book for self" on public.reservations
   for insert to authenticated
-  with check (user_id = auth.uid() and status = 'active');
+  with check (user_id = auth.uid() and status = 'pending');
 
 create policy "students cancel own" on public.reservations
   for update to authenticated
@@ -309,6 +313,110 @@ create policy "students cancel own" on public.reservations
 
 create policy "admins manage reservations" on public.reservations
   for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
+-- ============================================================================
+-- APPROVAL WORKFLOW + IN-APP NOTIFICATIONS
+-- ============================================================================
+create table if not exists public.notifications (
+  id             uuid primary key default gen_random_uuid(),
+  user_id        uuid not null references auth.users (id) on delete cascade,
+  kind           text not null check (kind in ('approved', 'rejected', 'cancelled', 'info')),
+  title          text not null,
+  body           text not null default '',
+  reservation_id uuid references public.reservations (id) on delete set null,
+  read_at        timestamptz,
+  created_at     timestamptz not null default now()
+);
+
+create index if not exists notifications_user_idx
+  on public.notifications (user_id, created_at desc);
+
+alter table public.notifications enable row level security;
+
+drop policy if exists "read own notifications" on public.notifications;
+create policy "read own notifications" on public.notifications
+  for select to authenticated using (user_id = auth.uid());
+
+drop policy if exists "update own notifications" on public.notifications;
+create policy "update own notifications" on public.notifications
+  for update to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+drop policy if exists "delete own notifications" on public.notifications;
+create policy "delete own notifications" on public.notifications
+  for delete to authenticated using (user_id = auth.uid());
+
+-- The notice is raised in the database, so a client cannot skip it.
+create or replace function public.notify_reservation_decision()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  room_name text;
+  when_text text;
+begin
+  if new.status is not distinct from old.status then return new; end if;
+  if new.status not in ('approved', 'rejected') then return new; end if;
+  if new.user_id is null then return new; end if;
+
+  select name into room_name from public.rooms where id = new.room_id;
+
+  when_text := to_char(new.start_time at time zone 'Asia/Manila', 'Mon DD, HH12:MI AM')
+    || ' – ' || to_char(new.end_time at time zone 'Asia/Manila', 'HH12:MI AM');
+
+  insert into public.notifications (user_id, kind, title, body, reservation_id)
+  values (
+    new.user_id,
+    new.status,
+    case when new.status = 'approved'
+      then coalesce(room_name, 'Your room') || ' is confirmed'
+      else coalesce(room_name, 'Your room') || ' request was declined' end,
+    case when new.status = 'approved'
+      then when_text || '. Bring the student IDs you uploaded.'
+      else when_text || '. '
+        || coalesce(nullif(new.rejection_reason, ''), 'No reason was given.') end,
+    new.id
+  );
+
+  return new;
+end;
+$$;
+
+drop trigger if exists reservations_notify_decision on public.reservations;
+create trigger reservations_notify_decision
+  after update on public.reservations
+  for each row execute function public.notify_reservation_decision();
+
+-- A student must not approve their own booking.
+create or replace function public.guard_reservation_status()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.status is distinct from old.status
+     and new.status in ('approved', 'rejected')
+     and not public.is_admin() then
+    raise exception 'Only library staff can approve or reject a reservation';
+  end if;
+
+  if new.status in ('approved', 'rejected')
+     and old.status is distinct from new.status then
+    new.reviewed_by := auth.uid();
+    new.reviewed_at := now();
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists reservations_guard_status on public.reservations;
+create trigger reservations_guard_status
+  before update on public.reservations
+  for each row execute function public.guard_reservation_status();
 
 -- ============================================================================
 -- STORAGE — private bucket for the student-ID photos
@@ -352,8 +460,9 @@ create policy "delete own reservation ids" on storage.objects
 -- ============================================================================
 -- REALTIME
 -- ============================================================================
-alter table public.reservations replica identity full;
-alter table public.room_blocks  replica identity full;
+alter table public.reservations  replica identity full;
+alter table public.room_blocks   replica identity full;
+alter table public.notifications replica identity full;
 
 do $$
 begin
@@ -364,6 +473,12 @@ end $$;
 do $$
 begin
   alter publication supabase_realtime add table public.room_blocks;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.notifications;
 exception when duplicate_object then null;
 end $$;
 

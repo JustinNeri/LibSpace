@@ -98,7 +98,7 @@ export default function RoomSchedule({
     let i = 0
     while (i < lane.length) {
       const cell = lane[i]
-      if (cell.state === 'booked' || cell.state === 'blocked') {
+      if (['booked', 'pending', 'blocked'].includes(cell.state)) {
         let span = 1
         while (i + span < lane.length && lane[i + span] === cell) span += 1
         ranges.push({
@@ -259,7 +259,7 @@ function TakenList({ taken, currentUserId }) {
       <ul className="space-y-1.5">
         {taken.map((range) => {
           const isMine =
-            range.cell.state === 'booked' &&
+            ['booked', 'pending'].includes(range.cell.state) &&
             Boolean(currentUserId) &&
             range.cell.row?.user_id === currentUserId
 
@@ -285,9 +285,13 @@ function TakenList({ taken, currentUserId }) {
               >
                 {range.cell.state === 'blocked'
                   ? (range.cell.row?.reason ?? 'Unavailable')
-                  : isMine
-                    ? 'Your booking'
-                    : 'Booked'}
+                  : range.cell.state === 'pending'
+                    ? isMine
+                      ? 'Your request · awaiting approval'
+                      : 'Requested'
+                    : isMine
+                      ? 'Your booking'
+                      : 'Booked'}
               </span>
             </li>
           )

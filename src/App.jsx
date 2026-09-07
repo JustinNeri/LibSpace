@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AlertCircle, Loader2 } from 'lucide-react'
 import AdminPanel from './components/AdminPanel'
+import ApprovalQueue from './components/ApprovalQueue'
 import AppHeader from './components/AppHeader'
 import AuthGate from './components/AuthGate'
 import BookingModal from './components/BookingModal'
@@ -129,7 +130,7 @@ function Workspace() {
 
       setBooking(null)
       setToast(
-        `${details.room.name} reserved · ${formatTime(details.startMin)} – ${formatTime(details.endMin)}`,
+        `Request sent for ${details.room.name} · ${formatTime(details.startMin)} – ${formatTime(details.endMin)}. You'll be notified once staff review it.`,
       )
     },
     [createReservation, user],
@@ -150,6 +151,7 @@ function Workspace() {
             {view === 'rooms' && (activeRoom ? activeRoom.name : 'Discussion rooms')}
             {view === 'grid' && 'Room availability'}
             {view === 'mine' && (isAdmin ? 'All upcoming bookings' : 'My bookings')}
+            {view === 'requests' && 'Reservation requests'}
             {view === 'admin' && 'Manage rooms'}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
@@ -162,7 +164,9 @@ function Workspace() {
             {view === 'mine' &&
               (isAdmin
                 ? 'Every active reservation across the library.'
-                : 'Your active reservations. Cancel any you no longer need.')}
+                : 'Track approval and cancel anything you no longer need.')}
+            {view === 'requests' &&
+              'Check the student IDs, then approve or decline. The student is notified either way.'}
             {view === 'admin' &&
               'Add rooms, set weekly opening hours, and block time for maintenance.'}
           </p>
@@ -233,6 +237,8 @@ function Workspace() {
         )}
 
         {view === 'mine' && <MyReservations onCancelled={refresh} />}
+
+        {view === 'requests' && isAdmin && <ApprovalQueue onDecided={refresh} />}
 
         {view === 'admin' && isAdmin && (
           <AdminPanel

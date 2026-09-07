@@ -176,7 +176,7 @@ function RoomRow({
   let cursor = 0
   while (cursor < slots.length) {
     const entry = lane?.[cursor]
-    if (entry && (entry.state === 'booked' || entry.state === 'blocked')) {
+    if (entry && ['booked', 'pending', 'blocked'].includes(entry.state)) {
       let span = 1
       while (cursor + span < slots.length && lane[cursor + span] === entry) span += 1
       cards.push({ entry, startIndex: cursor, span })
