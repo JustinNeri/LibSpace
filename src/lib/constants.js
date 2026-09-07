@@ -7,6 +7,13 @@ export const UNIVERSITY_NAME = 'Holy Angel University'
 export const UNIVERSITY_SHORT = 'HAU'
 export const LIBRARY_NAME = 'University Library'
 
+/** HAU requires a group of at least this many to reserve a discussion room. */
+export const MIN_GROUP_SIZE = 5
+
+/** One photo of a student ID per member, so the count follows group size. */
+export const ID_PHOTO_MAX_BYTES = 5 * 1024 * 1024
+export const ID_PHOTO_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic']
+
 export const YEAR_LEVELS = [
   '1st Year',
   '2nd Year',

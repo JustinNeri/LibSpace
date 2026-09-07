@@ -5,6 +5,8 @@ import AppHeader from './components/AppHeader'
 import AuthGate from './components/AuthGate'
 import BookingModal from './components/BookingModal'
 import MyReservations from './components/MyReservations'
+import RoomList from './components/RoomList'
+import RoomSchedule from './components/RoomSchedule'
 import AccountSetup from './components/AccountSetup'
 import TimeslotGrid from './components/TimeslotGrid'
 import Toast from './components/Toast'
@@ -38,9 +40,11 @@ function Workspace() {
   const { user, profile, isAdmin } = useAuth()
 
   const [date, setDate] = useState(() => new Date())
-  const [view, setView] = useState('grid')
+  const [view, setView] = useState('rooms')
+  const [openRoom, setOpenRoom] = useState(null)
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [progress, setProgress] = useState(null)
   const [error, setError] = useState(null)
   const [toast, setToast] = useState(null)
   const [now, setNow] = useState(() => new Date())
@@ -67,17 +71,23 @@ function Workspace() {
 
   const nowMinutes = isSameDay(date, now) ? minutesFromDate(now) : null
 
+  // Re-resolve the open room against fresh data so an admin edit shows up.
+  const activeRoom = openRoom ? (rooms.find((r) => r.id === openRoom.id) ?? null) : null
+
   const handleConfirm = useCallback(
     async (booking) => {
       setSaving(true)
       setError(null)
+      setProgress(null)
 
       const { error: insertError } = await createReservation({
         ...booking,
         userId: user.id,
+        onProgress: setProgress,
       })
 
       setSaving(false)
+      setProgress(null)
 
       if (insertError) {
         setError(friendlyError(insertError))
@@ -104,11 +114,16 @@ function Workspace() {
       <main className="mx-auto max-w-[1400px] px-6 py-8">
         <div className="mb-6">
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+            {view === 'rooms' && (activeRoom ? activeRoom.name : 'Discussion rooms')}
             {view === 'grid' && 'Room availability'}
             {view === 'mine' && (isAdmin ? 'All upcoming bookings' : 'My bookings')}
             {view === 'admin' && 'Manage rooms'}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
+            {view === 'rooms' &&
+              (activeRoom
+                ? 'Pick a free time to reserve this room.'
+                : 'Tap a room to see when it is free today.')}
             {view === 'grid' &&
               `Pick any open ${SLOT_MINUTES}-minute block to reserve a discussion room.`}
             {view === 'mine' &&
@@ -132,6 +147,35 @@ function Workspace() {
             </p>
           </div>
         )}
+
+        {view === 'rooms' &&
+          (activeRoom ? (
+            <RoomSchedule
+              room={activeRoom}
+              reservations={reservations}
+              blocks={blocks}
+              schedules={schedules}
+              dayWindow={dayWindow}
+              weekday={weekday}
+              dateKey={dateKey}
+              nowMinutes={nowMinutes}
+              currentUserId={user.id}
+              onBack={() => setOpenRoom(null)}
+              onSelectSlot={setSelectedSlot}
+            />
+          ) : (
+            <RoomList
+              rooms={rooms}
+              reservations={reservations}
+              blocks={blocks}
+              schedules={schedules}
+              dayWindow={dayWindow}
+              weekday={weekday}
+              nowMinutes={nowMinutes}
+              loading={loading}
+              onSelectRoom={setOpenRoom}
+            />
+          ))}
 
         {view === 'grid' && (
           <>
@@ -173,6 +217,7 @@ function Workspace() {
         key={selectedSlot ? `${selectedSlot.room.id}-${selectedSlot.startMin}` : 'closed'}
         slot={selectedSlot}
         saving={saving}
+        progress={progress}
         error={error}
         defaults={{
           studentName: profile?.full_name ?? '',

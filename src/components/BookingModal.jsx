@@ -8,21 +8,17 @@ import {
   Users,
   X,
 } from 'lucide-react'
+import IdPhotoUpload from './IdPhotoUpload'
 import { SLOT_MINUTES, formatLongDate, formatTime, fromDateKey } from '../lib/time'
-
-const EMPTY_FORM = {
-  studentName: '',
-  studentId: '',
-  groupSize: 2,
-  purpose: '',
-}
+import { MIN_GROUP_SIZE } from '../lib/constants'
 
 /** Name and student number come from the signed-in profile. */
 function initialForm(defaults) {
   return {
-    ...EMPTY_FORM,
     studentName: defaults?.studentName ?? '',
     studentId: defaults?.studentId ?? '',
+    groupSize: MIN_GROUP_SIZE,
+    purpose: '',
   }
 }
 
@@ -39,12 +35,14 @@ function initialForm(defaults) {
 export default function BookingModal({
   slot,
   saving,
+  progress,
   error,
   defaults,
   onClose,
   onConfirm,
 }) {
   const [form, setForm] = useState(() => initialForm(defaults))
+  const [photos, setPhotos] = useState([])
   const [spanSlots, setSpanSlots] = useState(1)
   const [touched, setTouched] = useState(false)
   const firstFieldRef = useRef(null)
@@ -81,7 +79,10 @@ export default function BookingModal({
       .filter((count) => count <= slot.maxSpan)
       .map((count) => ({
         count,
-        label: count % 2 === 0 ? `${count / 2} hr${count > 2 ? 's' : ''}` : `${count * SLOT_MINUTES} min`,
+        label:
+          count % 2 === 0
+            ? `${count / 2} hr${count > 2 ? 's' : ''}`
+            : `${count * SLOT_MINUTES} min`,
       }))
   }, [slot])
 
@@ -91,15 +92,20 @@ export default function BookingModal({
   const endMin = startMin + spanSlots * SLOT_MINUTES
 
   const groupSize = Number(form.groupSize)
+  const validGroup = Number.isFinite(groupSize) && groupSize >= MIN_GROUP_SIZE
+
   const errors = {
     studentName: form.studentName.trim() ? null : 'Your name is required.',
-    studentId: form.studentId.trim() ? null : 'Student ID is required.',
-    groupSize:
-      !Number.isFinite(groupSize) || groupSize < 1
-        ? 'Enter at least 1 person.'
-        : groupSize > room.capacity
-          ? `This room seats ${room.capacity}.`
-          : null,
+    studentId: form.studentId.trim() ? null : 'Student number is required.',
+    groupSize: !validGroup
+      ? `At least ${MIN_GROUP_SIZE} people are needed to reserve a room.`
+      : groupSize > room.capacity
+        ? `${room.name} seats ${room.capacity}.`
+        : null,
+    photos:
+      photos.length < (validGroup ? groupSize : MIN_GROUP_SIZE)
+        ? 'Add one ID photo for every member.'
+        : null,
   }
   const isValid = Object.values(errors).every((message) => message === null)
 
@@ -120,6 +126,7 @@ export default function BookingModal({
       studentId: form.studentId.trim(),
       groupSize,
       purpose: form.purpose.trim(),
+      photos,
     })
   }
 
@@ -231,13 +238,13 @@ export default function BookingModal({
                   type="text"
                   value={form.studentName}
                   onChange={setField('studentName')}
-                  placeholder="Juan Dela Cruz"
+                  placeholder="Dela Cruz, Juan M."
                   autoComplete="name"
                   className={inputClass(showError('studentName'))}
                 />
               </Field>
 
-              <Field label="Student ID" error={showError('studentId')}>
+              <Field label="Student number" error={showError('studentId')}>
                 <input
                   type="text"
                   value={form.studentId}
@@ -251,16 +258,29 @@ export default function BookingModal({
             <Field label="Group size" error={showError('groupSize')}>
               <input
                 type="number"
-                min={1}
+                min={MIN_GROUP_SIZE}
                 max={room.capacity}
                 value={form.groupSize}
                 onChange={setField('groupSize')}
                 className={`${inputClass(showError('groupSize'))} max-w-32`}
               />
               <p className="mt-2 text-xs text-slate-400">
-                Maximum {room.capacity} people for this room.
+                {MIN_GROUP_SIZE} to {room.capacity} people. The library requires at least{' '}
+                {MIN_GROUP_SIZE} to reserve a discussion room.
               </p>
             </Field>
+
+            <IdPhotoUpload
+              photos={photos}
+              required={validGroup ? groupSize : MIN_GROUP_SIZE}
+              onChange={setPhotos}
+              disabled={saving}
+            />
+            {showError('photos') && (
+              <p className="-mt-3 text-xs font-medium text-rose-600">
+                {errors.photos}
+              </p>
+            )}
 
             <Field label="Purpose" hint="Optional">
               <textarea
@@ -281,6 +301,11 @@ export default function BookingModal({
           </div>
 
           <footer className="flex items-center justify-end gap-3 border-t border-slate-200/60 bg-slate-50/70 px-6 py-4">
+            {saving && progress && (
+              <span className="mr-auto text-xs font-medium text-slate-500">
+                {progress}
+              </span>
+            )}
             <button
               type="button"
               onClick={onClose}

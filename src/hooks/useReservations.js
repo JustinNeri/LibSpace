@@ -6,6 +6,9 @@ import { dateAtMinutes, fromDateKey, windowForWeekday } from '../lib/time'
  * Natural ordering, so DR-2 comes before DR-10 rather than after it.
  * Plain alphabetical sorting compares "1" against "2" and gets this wrong.
  */
+/** Private bucket holding one student-ID photo per group member. */
+const ID_BUCKET = 'reservation-ids'
+
 const byRoomName = new Intl.Collator(undefined, {
   numeric: true,
   sensitivity: 'base',
@@ -132,6 +135,13 @@ export function useReservations(dateKey) {
 
   /* ---------------- writes ---------------- */
 
+  /**
+   * Upload the ID photos, then insert the booking.
+   *
+   * Photos go first because the reservation row references them, and the
+   * uploads are removed again if the insert is rejected — otherwise a
+   * double-booking would leave orphaned files behind.
+   */
   const createReservation = useCallback(
     async ({
       room,
@@ -143,7 +153,33 @@ export function useReservations(dateKey) {
       groupSize,
       purpose,
       userId,
+      photos = [],
+      onProgress,
     }) => {
+      const folder = `${userId}/${crypto.randomUUID()}`
+      const uploaded = []
+
+      for (const [index, file] of photos.entries()) {
+        onProgress?.(`Uploading ID ${index + 1} of ${photos.length}…`)
+
+        const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+        const path = `${folder}/${index + 1}.${extension}`
+
+        const { error: uploadError } = await supabase.storage
+          .from(ID_BUCKET)
+          .upload(path, file, { contentType: file.type, upsert: false })
+
+        if (uploadError) {
+          if (uploaded.length > 0) {
+            await supabase.storage.from(ID_BUCKET).remove(uploaded)
+          }
+          return { data: null, error: uploadError }
+        }
+        uploaded.push(path)
+      }
+
+      onProgress?.('Saving reservation…')
+
       const { data, error } = await supabase
         .from('reservations')
         .insert({
@@ -153,6 +189,7 @@ export function useReservations(dateKey) {
           student_id: studentId,
           group_size: groupSize,
           purpose: purpose || null,
+          id_photos: uploaded,
           status: 'active',
           start_time: dateAtMinutes(day, startMin).toISOString(),
           end_time: dateAtMinutes(day, endMin).toISOString(),
@@ -160,14 +197,19 @@ export function useReservations(dateKey) {
         .select()
         .single()
 
-      // Realtime will echo this back; adding it now keeps the UI instant.
-      if (!error && data) {
-        setReservations((current) =>
-          current.some((item) => item.id === data.id) ? current : [...current, data],
-        )
+      if (error) {
+        if (uploaded.length > 0) {
+          await supabase.storage.from(ID_BUCKET).remove(uploaded)
+        }
+        return { data: null, error }
       }
 
-      return { data, error }
+      // Realtime will echo this back; adding it now keeps the UI instant.
+      setReservations((current) =>
+        current.some((item) => item.id === data.id) ? current : [...current, data],
+      )
+
+      return { data, error: null }
     },
     [],
   )

@@ -164,8 +164,10 @@ create table if not exists public.reservations (
   user_id      uuid        references auth.users (id) on delete set null,
   student_name text        not null,
   student_id   text        not null,
-  group_size   int         not null default 1 check (group_size > 0),
+  group_size   int         not null default 5,
   purpose      text,
+  -- Storage paths of one student-ID photo per group member.
+  id_photos    text[]      not null default '{}',
   start_time   timestamptz not null,
   end_time     timestamptz not null,
   status       text        not null default 'active'
@@ -173,6 +175,14 @@ create table if not exists public.reservations (
   created_at   timestamptz not null default now(),
   constraint reservations_time_order check (end_time > start_time)
 );
+
+alter table public.reservations
+  add column if not exists id_photos text[] not null default '{}';
+
+-- Holy Angel University requires a group of at least 5 to reserve a room.
+alter table public.reservations drop constraint if exists reservations_min_group;
+alter table public.reservations
+  add constraint reservations_min_group check (group_size >= 5);
 
 create index if not exists reservations_room_start_idx
   on public.reservations (room_id, start_time);
@@ -301,6 +311,45 @@ create policy "admins manage reservations" on public.reservations
   for all to authenticated using (public.is_admin()) with check (public.is_admin());
 
 -- ============================================================================
+-- STORAGE — private bucket for the student-ID photos
+-- ============================================================================
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'reservation-ids', 'reservation-ids', false, 5242880,
+  '{image/jpeg,image/jpg,image/png,image/webp,image/heic}'
+)
+on conflict (id) do update
+  set public             = excluded.public,
+      file_size_limit    = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;
+
+-- Files live at <user id>/<booking ref>/<n>.<ext>, so the first path segment
+-- is the owner. Students touch only their own folder; admins may read all.
+drop policy if exists "upload own reservation ids" on storage.objects;
+create policy "upload own reservation ids" on storage.objects
+  for insert to authenticated
+  with check (
+    bucket_id = 'reservation-ids'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "read own reservation ids" on storage.objects;
+create policy "read own reservation ids" on storage.objects
+  for select to authenticated
+  using (
+    bucket_id = 'reservation-ids'
+    and ((storage.foldername(name))[1] = auth.uid()::text or public.is_admin())
+  );
+
+drop policy if exists "delete own reservation ids" on storage.objects;
+create policy "delete own reservation ids" on storage.objects
+  for delete to authenticated
+  using (
+    bucket_id = 'reservation-ids'
+    and ((storage.foldername(name))[1] = auth.uid()::text or public.is_admin())
+  );
+
+-- ============================================================================
 -- REALTIME
 -- ============================================================================
 alter table public.reservations replica identity full;
@@ -323,8 +372,8 @@ end $$;
 -- ============================================================================
 insert into public.rooms (name, capacity, equipment)
 values
-  ('DR-1',  4,  '{Outlets}'),
-  ('DR-2',  4,  '{Whiteboard,Outlets}'),
+  ('DR-1',  5,  '{Outlets}'),
+  ('DR-2',  5,  '{Whiteboard,Outlets}'),
   ('DR-3',  6,  '{Whiteboard,Outlets}'),
   ('DR-4',  6,  '{Whiteboard,Display,Outlets}'),
   ('DR-5',  8,  '{Whiteboard,Outlets}'),

@@ -94,8 +94,11 @@ export default function AppHeader({ date, onChangeDate, view, onChangeView }) {
         <div className="ml-auto flex items-center gap-3">
           {/* View switch */}
           <div className="flex items-center rounded-xl border border-slate-200/60 bg-white p-1 shadow-sm">
+            <ViewTab active={view === 'rooms'} onClick={() => onChangeView('rooms')}>
+              Rooms
+            </ViewTab>
             <ViewTab active={view === 'grid'} onClick={() => onChangeView('grid')}>
-              Availability
+              Timetable
             </ViewTab>
             <ViewTab active={view === 'mine'} onClick={() => onChangeView('mine')}>
               My bookings
