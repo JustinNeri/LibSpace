@@ -1,73 +1,119 @@
 import { useMemo } from 'react'
-import { Plus, Users } from 'lucide-react'
+import { Ban, Lock, Plus, Users } from 'lucide-react'
 import {
-  DAY_END_MIN,
-  DAY_START_MIN,
-  SLOT_COUNT,
+  MAX_BOOKING_SLOTS,
   SLOT_MINUTES,
-  SLOTS,
+  buildSlots,
   formatTime,
-  reservationToSpan,
+  parseTimeString,
+  rangeToSpan,
 } from '../lib/time'
 
 const ROOM_COL_WIDTH = 260 // px — sticky room rail
 const SLOT_MIN_WIDTH = 88 // px — keeps half-hours readable before it scrolls
-const MAX_BOOKING_SLOTS = 4 // 2 hours
-
-const gridTemplate = {
-  gridTemplateColumns: `repeat(${SLOT_COUNT}, minmax(${SLOT_MIN_WIDTH}px, 1fr))`,
-}
 
 /**
  * Daily room-by-room availability grid.
  *
- * Rows are rooms, columns are half-hour blocks. Reservations are laid out
- * as spanning blocks in the same CSS grid as the empty cells, so a 90-minute
- * booking reads as one card rather than three adjacent boxes.
+ * Rows are rooms, columns are half-hour blocks. Reservations and admin
+ * blocks are laid out as spanning cards in the same CSS grid as the empty
+ * cells, so a 90-minute booking reads as one card rather than three boxes.
  *
- * @param {Array}  rooms
- * @param {Array}  reservations  active reservations for `dateKey`
- * @param {string} dateKey       "YYYY-MM-DD"
- * @param {number|null} nowMinutes  minutes-from-midnight, only when viewing today
+ * Cell states: available · booked · mine · blocked · closed · past
  */
 export default function TimeslotGrid({
   rooms,
   reservations,
+  blocks,
+  schedules,
+  dayWindow,
+  weekday,
   dateKey,
   nowMinutes = null,
   selectedSlot = null,
+  currentUserId = null,
   loading = false,
   onSelectSlot,
 }) {
-  /**
-   * room id -> array of SLOT_COUNT entries, each the occupying reservation
-   * or null. Built once per data change so each cell lookup is O(1).
-   */
-  const occupancy = useMemo(() => {
-    const map = new Map(rooms.map((room) => [room.id, Array(SLOT_COUNT).fill(null)]))
+  const slots = useMemo(
+    () => buildSlots(dayWindow.startMin, dayWindow.endMin),
+    [dayWindow],
+  )
 
+  const gridTemplate = useMemo(
+    () => ({
+      gridTemplateColumns: `repeat(${slots.length}, minmax(${SLOT_MIN_WIDTH}px, 1fr))`,
+    }),
+    [slots.length],
+  )
+
+  /** room id -> per-slot occupancy, so each cell lookup is O(1). */
+  const lanes = useMemo(() => {
+    const map = new Map(
+      rooms.map((room) => [room.id, Array(slots.length).fill(null)]),
+    )
+
+    // 1. Closed hours first — anything outside the room's schedule.
+    for (const room of rooms) {
+      const lane = map.get(room.id)
+      const schedule = schedules.find(
+        (row) => row.room_id === room.id && row.weekday === weekday,
+      )
+
+      const opens = schedule ? parseTimeString(schedule.opens_at) : null
+      const closes = schedule ? parseTimeString(schedule.closes_at) : null
+
+      slots.forEach((slot, index) => {
+        const outside =
+          !schedule || slot.startMin < opens || slot.endMin > closes
+        if (outside) lane[index] = { type: 'closed' }
+      })
+    }
+
+    // 2. Admin blocks override open hours.
+    for (const block of blocks) {
+      const lane = map.get(block.room_id)
+      if (!lane) continue
+      const placement = rangeToSpan(
+        block.start_time,
+        block.end_time,
+        dayWindow.startMin,
+        dayWindow.endMin,
+      )
+      if (!placement) continue
+      for (let i = placement.startIndex; i < placement.startIndex + placement.span; i += 1) {
+        if (i >= 0 && i < lane.length) lane[i] = { type: 'block', row: block }
+      }
+    }
+
+    // 3. Reservations sit on top.
     for (const reservation of reservations) {
       const lane = map.get(reservation.room_id)
       if (!lane) continue
-
-      const placement = reservationToSpan(reservation)
+      const placement = rangeToSpan(
+        reservation.start_time,
+        reservation.end_time,
+        dayWindow.startMin,
+        dayWindow.endMin,
+      )
       if (!placement) continue
-
       for (let i = placement.startIndex; i < placement.startIndex + placement.span; i += 1) {
-        if (i >= 0 && i < SLOT_COUNT) lane[i] = reservation
+        if (i >= 0 && i < lane.length) {
+          lane[i] = { type: 'reservation', row: reservation }
+        }
       }
     }
 
     return map
-  }, [rooms, reservations])
+  }, [rooms, schedules, blocks, reservations, slots, weekday, dayWindow])
 
-  /** Free consecutive slots starting at `index`, capped at MAX_BOOKING_SLOTS. */
+  /** Free consecutive slots from `index`, capped at MAX_BOOKING_SLOTS. */
   const availableSpan = (roomId, index) => {
-    const lane = occupancy.get(roomId)
+    const lane = lanes.get(roomId)
     let span = 0
     while (
       span < MAX_BOOKING_SLOTS &&
-      index + span < SLOT_COUNT &&
+      index + span < slots.length &&
       lane?.[index + span] === null
     ) {
       span += 1
@@ -76,20 +122,29 @@ export default function TimeslotGrid({
   }
 
   const nowOffset =
-    nowMinutes !== null && nowMinutes >= DAY_START_MIN && nowMinutes <= DAY_END_MIN
-      ? ((nowMinutes - DAY_START_MIN) / (DAY_END_MIN - DAY_START_MIN)) * 100
+    nowMinutes !== null &&
+    nowMinutes >= dayWindow.startMin &&
+    nowMinutes <= dayWindow.endMin
+      ? ((nowMinutes - dayWindow.startMin) / (dayWindow.endMin - dayWindow.startMin)) * 100
       : null
 
   if (loading) return <GridSkeleton />
 
   if (rooms.length === 0) {
     return (
-      <div className="rounded-2xl border border-slate-200/60 bg-white p-16 text-center shadow-sm">
-        <p className="text-sm font-medium text-slate-900">No discussion rooms yet</p>
-        <p className="mt-1 text-sm text-slate-500">
-          Add rooms in Supabase and they will appear here.
-        </p>
-      </div>
+      <EmptyState
+        title="No discussion rooms yet"
+        body="An administrator needs to add rooms before anything can be booked."
+      />
+    )
+  }
+
+  if (slots.length === 0) {
+    return (
+      <EmptyState
+        title="The library is closed on this day"
+        body="Pick another date, or ask an administrator to set opening hours."
+      />
     )
   }
 
@@ -109,12 +164,14 @@ export default function TimeslotGrid({
             </div>
 
             <div className="grid" style={gridTemplate}>
-              {SLOTS.map((slot) => (
+              {slots.map((slot) => (
                 <div
                   key={slot.index}
                   className={[
                     'py-3 pl-3 text-left',
-                    slot.isHour ? 'border-l border-slate-200/60' : 'border-l border-slate-100',
+                    slot.isHour
+                      ? 'border-l border-slate-200/60'
+                      : 'border-l border-slate-100',
                   ].join(' ')}
                 >
                   <span
@@ -136,11 +193,15 @@ export default function TimeslotGrid({
             <RoomRow
               key={room.id}
               room={room}
-              lane={occupancy.get(room.id)}
+              lane={lanes.get(room.id)}
+              slots={slots}
+              gridTemplate={gridTemplate}
+              dayWindow={dayWindow}
               dateKey={dateKey}
               nowMinutes={nowMinutes}
               nowOffset={nowOffset}
               selectedSlot={selectedSlot}
+              currentUserId={currentUserId}
               availableSpan={availableSpan}
               onSelectSlot={onSelectSlot}
             />
@@ -156,22 +217,26 @@ export default function TimeslotGrid({
 function RoomRow({
   room,
   lane,
+  slots,
+  gridTemplate,
+  dayWindow,
   dateKey,
   nowMinutes,
   nowOffset,
   selectedSlot,
+  currentUserId,
   availableSpan,
   onSelectSlot,
 }) {
-  // Render each reservation once, at the column where it starts.
-  const blocks = []
+  // Collapse each run of identical entries into one spanning card.
+  const cards = []
   let cursor = 0
-  while (cursor < SLOT_COUNT) {
-    const reservation = lane?.[cursor]
-    if (reservation) {
+  while (cursor < slots.length) {
+    const entry = lane?.[cursor]
+    if (entry && entry.type !== 'closed') {
       let span = 1
-      while (cursor + span < SLOT_COUNT && lane[cursor + span] === reservation) span += 1
-      blocks.push({ reservation, startIndex: cursor, span })
+      while (cursor + span < slots.length && lane[cursor + span] === entry) span += 1
+      cards.push({ entry, startIndex: cursor, span })
       cursor += span
     } else {
       cursor += 1
@@ -209,18 +274,26 @@ function RoomRow({
 
       {/* Slot lane */}
       <div className="relative grid h-20" style={gridTemplate}>
-        {/* Empty / past cells */}
-        {SLOTS.map((slot) => {
-          if (lane?.[slot.index]) {
+        {slots.map((slot) => {
+          const entry = lane?.[slot.index]
+          const edge = slot.isHour
+            ? 'border-l border-slate-200/60'
+            : 'border-l border-slate-100'
+          const position = { gridColumn: `${slot.index + 1} / span 1`, gridRow: 1 }
+
+          if (entry?.type === 'closed') {
             return (
               <div
                 key={slot.index}
-                style={{ gridColumn: `${slot.index + 1} / span 1`, gridRow: 1 }}
-                className={
-                  slot.isHour ? 'border-l border-slate-200/60' : 'border-l border-slate-100'
-                }
+                style={position}
+                aria-hidden
+                className={`${edge} bg-[repeating-linear-gradient(45deg,var(--color-slate-100)_0px,var(--color-slate-100)_6px,transparent_6px,transparent_12px)]`}
               />
             )
+          }
+
+          if (entry) {
+            return <div key={slot.index} style={position} className={edge} />
           }
 
           const isPast = nowMinutes !== null && slot.endMin <= nowMinutes
@@ -232,6 +305,8 @@ function RoomRow({
               key={slot.index}
               slot={slot}
               room={room}
+              edge={edge}
+              position={position}
               isPast={isPast}
               isSelected={isSelected}
               onClick={() =>
@@ -246,22 +321,34 @@ function RoomRow({
           )
         })}
 
-        {/* Booked blocks */}
-        {blocks.map(({ reservation, startIndex, span }) => (
-          <ReservationBlock
-            key={reservation.id}
-            reservation={reservation}
-            startIndex={startIndex}
-            span={span}
-          />
-        ))}
+        {/* Spanning cards */}
+        {cards.map(({ entry, startIndex, span }) =>
+          entry.type === 'block' ? (
+            <BlockCard
+              key={`block-${entry.row.id}`}
+              block={entry.row}
+              startIndex={startIndex}
+              span={span}
+              dayWindow={dayWindow}
+            />
+          ) : (
+            <ReservationCard
+              key={`res-${entry.row.id}`}
+              reservation={entry.row}
+              startIndex={startIndex}
+              span={span}
+              dayWindow={dayWindow}
+              isMine={Boolean(currentUserId) && entry.row.user_id === currentUserId}
+            />
+          ),
+        )}
 
         {/* Current-time indicator */}
         {nowOffset !== null && (
           <div
             aria-hidden
             className="pointer-events-none absolute inset-y-0 z-20 w-px bg-rose-400/70"
-            style={{ left: `${nowOffset}%`, gridRow: 1 }}
+            style={{ left: `${nowOffset}%` }}
           >
             <span className="absolute -top-1 -left-[3px] size-[7px] rounded-full bg-rose-500 ring-2 ring-white" />
           </div>
@@ -273,17 +360,9 @@ function RoomRow({
 
 /* ---------------- Cells ---------------- */
 
-function SlotCell({ slot, room, isPast, isSelected, onClick }) {
-  const edge = slot.isHour ? 'border-l border-slate-200/60' : 'border-l border-slate-100'
-
+function SlotCell({ slot, room, edge, position, isPast, isSelected, onClick }) {
   if (isPast) {
-    return (
-      <div
-        style={{ gridColumn: `${slot.index + 1} / span 1`, gridRow: 1 }}
-        className={`${edge} bg-slate-50/70`}
-        aria-hidden
-      />
-    )
+    return <div style={position} className={`${edge} bg-slate-50/70`} aria-hidden />
   }
 
   return (
@@ -291,7 +370,7 @@ function SlotCell({ slot, room, isPast, isSelected, onClick }) {
       type="button"
       onClick={onClick}
       aria-label={`Book ${room.name} at ${slot.fullLabel}`}
-      style={{ gridColumn: `${slot.index + 1} / span 1`, gridRow: 1 }}
+      style={position}
       className={[
         edge,
         'group/slot relative flex items-center justify-center transition-all duration-200 ease-in-out',
@@ -314,20 +393,35 @@ function SlotCell({ slot, room, isPast, isSelected, onClick }) {
   )
 }
 
-function ReservationBlock({ reservation, startIndex, span }) {
-  const start = formatTime(DAY_START_MIN + startIndex * SLOT_MINUTES)
-  const end = formatTime(DAY_START_MIN + (startIndex + span) * SLOT_MINUTES)
+function ReservationCard({ reservation, startIndex, span, dayWindow, isMine }) {
+  const start = formatTime(dayWindow.startMin + startIndex * SLOT_MINUTES)
+  const end = formatTime(dayWindow.startMin + (startIndex + span) * SLOT_MINUTES)
 
   return (
     <div
       style={{ gridColumn: `${startIndex + 1} / span ${span}`, gridRow: 1 }}
-      className="z-10 m-1 flex min-w-0 flex-col justify-center overflow-hidden rounded-xl border border-slate-200/70 bg-slate-100/80 px-3 py-2 transition-all duration-200 ease-in-out hover:border-slate-300/70 hover:bg-slate-100"
       title={`${reservation.student_name} · ${start} – ${end}`}
+      className={[
+        'z-10 m-1 flex min-w-0 flex-col justify-center overflow-hidden rounded-xl border px-3 py-2 transition-all duration-200 ease-in-out',
+        isMine
+          ? 'border-brand-300/70 bg-brand-100/70 hover:border-brand-400/70 hover:bg-brand-100'
+          : 'border-slate-200/70 bg-slate-100/80 hover:border-slate-300/70 hover:bg-slate-100',
+      ].join(' ')}
     >
-      <p className="truncate text-xs font-semibold text-slate-700">
-        {reservation.student_name}
+      <p
+        className={[
+          'truncate text-xs font-semibold',
+          isMine ? 'text-brand-800' : 'text-slate-700',
+        ].join(' ')}
+      >
+        {isMine ? 'You' : reservation.student_name}
       </p>
-      <p className="mt-0.5 truncate text-[11px] text-slate-500">
+      <p
+        className={[
+          'mt-0.5 truncate text-[11px]',
+          isMine ? 'text-brand-600' : 'text-slate-500',
+        ].join(' ')}
+      >
         {start} – {end}
         {reservation.group_size ? ` · ${reservation.group_size} pax` : ''}
       </p>
@@ -335,7 +429,40 @@ function ReservationBlock({ reservation, startIndex, span }) {
   )
 }
 
-/* ---------------- Loading state ---------------- */
+function BlockCard({ block, startIndex, span, dayWindow }) {
+  const start = formatTime(dayWindow.startMin + startIndex * SLOT_MINUTES)
+  const end = formatTime(dayWindow.startMin + (startIndex + span) * SLOT_MINUTES)
+
+  return (
+    <div
+      style={{ gridColumn: `${startIndex + 1} / span ${span}`, gridRow: 1 }}
+      title={`${block.reason} · ${start} – ${end}`}
+      className="z-10 m-1 flex min-w-0 items-center gap-2 overflow-hidden rounded-xl border border-amber-200/80 bg-amber-50 px-3 py-2"
+    >
+      <Ban className="size-3.5 shrink-0 text-amber-600" strokeWidth={2} />
+      <div className="min-w-0">
+        <p className="truncate text-xs font-semibold text-amber-800">{block.reason}</p>
+        <p className="mt-0.5 truncate text-[11px] text-amber-600">
+          {start} – {end}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+/* ---------------- States ---------------- */
+
+function EmptyState({ title, body }) {
+  return (
+    <div className="rounded-2xl border border-slate-200/60 bg-white p-16 text-center shadow-sm">
+      <span className="mx-auto grid size-11 place-items-center rounded-xl bg-slate-100 text-slate-400">
+        <Lock className="size-5" strokeWidth={2} />
+      </span>
+      <p className="mt-4 text-sm font-medium text-slate-900">{title}</p>
+      <p className="mt-1 text-sm text-slate-500">{body}</p>
+    </div>
+  )
+}
 
 function GridSkeleton() {
   return (

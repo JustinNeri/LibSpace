@@ -1,21 +1,140 @@
--- LibSpace schema
+-- ============================================================================
+-- LibSpace schema — rooms, admin-managed schedules, reservations, auth roles
 -- Run in the Supabase SQL editor (Dashboard -> SQL Editor -> New query).
+-- Safe to re-run.
+-- ============================================================================
 
 create extension if not exists "btree_gist";
 
--- ---------------------------------------------------------------- rooms
+-- ============================================================================
+-- PROFILES — one row per auth user, carrying the role
+-- ============================================================================
+create table if not exists public.profiles (
+  id         uuid primary key references auth.users (id) on delete cascade,
+  email      text        not null,
+  full_name  text        not null default '',
+  student_id text        not null default '',
+  role       text        not null default 'student'
+               check (role in ('student', 'admin')),
+  created_at timestamptz not null default now(),
+
+  -- Students must register with a Gmail address; staff accounts may use
+  -- any domain. Enforced in the database, not just the sign-up form.
+  constraint students_must_use_gmail
+    check (role <> 'student' or email ilike '%@gmail.com')
+);
+
+-- Role lookup used by every policy below. SECURITY DEFINER so that reading
+-- the caller's own role does not recurse through profiles' own RLS.
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = auth.uid() and role = 'admin'
+  );
+$$;
+
+-- Every new auth user gets a profile automatically.
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, email, full_name, student_id, role)
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data ->> 'full_name', ''),
+    coalesce(new.raw_user_meta_data ->> 'student_id', ''),
+    'student'
+  )
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+-- A student must never be able to promote themselves to admin.
+create or replace function public.guard_role_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.role is distinct from old.role and not public.is_admin() then
+    raise exception 'Only an admin can change a role';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists profiles_guard_role on public.profiles;
+create trigger profiles_guard_role
+  before update on public.profiles
+  for each row execute function public.guard_role_change();
+
+-- ============================================================================
+-- ROOMS
+-- ============================================================================
 create table if not exists public.rooms (
   id         uuid primary key default gen_random_uuid(),
   name       text        not null,
   capacity   int         not null check (capacity > 0),
   equipment  text[]      not null default '{}',
+  is_active  boolean     not null default true,
   created_at timestamptz not null default now()
 );
 
--- --------------------------------------------------------- reservations
+-- ============================================================================
+-- ROOM SCHEDULES — the weekly opening hours an admin sets per room
+-- weekday: 0 = Sunday … 6 = Saturday (matches JS getDay())
+-- ============================================================================
+create table if not exists public.room_schedules (
+  id        uuid primary key default gen_random_uuid(),
+  room_id   uuid not null references public.rooms (id) on delete cascade,
+  weekday   int  not null check (weekday between 0 and 6),
+  opens_at  time not null,
+  closes_at time not null,
+  constraint room_schedules_time_order check (closes_at > opens_at),
+  unique (room_id, weekday)
+);
+
+-- ============================================================================
+-- ROOM BLOCKS — one-off closures (maintenance, reserved for a class)
+-- ============================================================================
+create table if not exists public.room_blocks (
+  id         uuid primary key default gen_random_uuid(),
+  room_id    uuid        not null references public.rooms (id) on delete cascade,
+  start_time timestamptz not null,
+  end_time   timestamptz not null,
+  reason     text        not null default 'Unavailable',
+  created_by uuid references auth.users (id) on delete set null,
+  created_at timestamptz not null default now(),
+  constraint room_blocks_time_order check (end_time > start_time)
+);
+
+create index if not exists room_blocks_room_start_idx
+  on public.room_blocks (room_id, start_time);
+
+-- ============================================================================
+-- RESERVATIONS
+-- ============================================================================
 create table if not exists public.reservations (
   id           uuid primary key default gen_random_uuid(),
   room_id      uuid        not null references public.rooms (id) on delete cascade,
+  user_id      uuid        references auth.users (id) on delete set null,
   student_name text        not null,
   student_id   text        not null,
   group_size   int         not null default 1 check (group_size > 0),
@@ -30,12 +149,12 @@ create table if not exists public.reservations (
 
 create index if not exists reservations_room_start_idx
   on public.reservations (room_id, start_time);
+create index if not exists reservations_user_idx
+  on public.reservations (user_id);
 
 -- Double-booking is rejected by the database, not just the UI.
 -- Cancelled rows are excluded so a slot frees up when someone cancels.
-alter table public.reservations
-  drop constraint if exists reservations_no_overlap;
-
+alter table public.reservations drop constraint if exists reservations_no_overlap;
 alter table public.reservations
   add constraint reservations_no_overlap
   exclude using gist (
@@ -43,33 +162,132 @@ alter table public.reservations
     tstzrange(start_time, end_time, '[)') with &&
   ) where (status = 'active');
 
--- ------------------------------------------------------------------ RLS
-alter table public.rooms        enable row level security;
-alter table public.reservations enable row level security;
+-- A booking may not land on top of an admin block.
+create or replace function public.reject_blocked_reservation()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if new.status = 'active' and exists (
+    select 1 from public.room_blocks b
+    where b.room_id = new.room_id
+      and tstzrange(b.start_time, b.end_time, '[)')
+          && tstzrange(new.start_time, new.end_time, '[)')
+  ) then
+    raise exception 'That time is blocked off by the library staff';
+  end if;
+  return new;
+end;
+$$;
 
--- Open policies suited to an anonymous student-facing kiosk/app.
--- Tighten these once Supabase Auth is added.
-drop policy if exists "rooms are readable by everyone" on public.rooms;
-create policy "rooms are readable by everyone"
-  on public.rooms for select using (true);
+drop trigger if exists reservations_check_blocks on public.reservations;
+create trigger reservations_check_blocks
+  before insert or update on public.reservations
+  for each row execute function public.reject_blocked_reservation();
 
-drop policy if exists "reservations are readable by everyone" on public.reservations;
-create policy "reservations are readable by everyone"
-  on public.reservations for select using (true);
+-- ============================================================================
+-- ROW LEVEL SECURITY
+-- ============================================================================
+alter table public.profiles        enable row level security;
+alter table public.rooms           enable row level security;
+alter table public.room_schedules  enable row level security;
+alter table public.room_blocks     enable row level security;
+alter table public.reservations    enable row level security;
 
-drop policy if exists "anyone can create a reservation" on public.reservations;
-create policy "anyone can create a reservation"
-  on public.reservations for insert with check (status = 'active');
+-- ---------------------------------------------------------------- profiles
+drop policy if exists "read own profile"      on public.profiles;
+drop policy if exists "admins read profiles"  on public.profiles;
+drop policy if exists "update own profile"    on public.profiles;
+drop policy if exists "admins update profiles" on public.profiles;
 
-drop policy if exists "anyone can cancel a reservation" on public.reservations;
-create policy "anyone can cancel a reservation"
-  on public.reservations for update using (true) with check (status in ('active', 'cancelled'));
+create policy "read own profile" on public.profiles
+  for select to authenticated using (id = auth.uid());
 
--- ------------------------------------------------------------- realtime
-alter publication supabase_realtime add table public.reservations;
+create policy "admins read profiles" on public.profiles
+  for select to authenticated using (public.is_admin());
+
+-- The guard_role_change trigger stops a student flipping their own role.
+create policy "update own profile" on public.profiles
+  for update to authenticated using (id = auth.uid()) with check (id = auth.uid());
+
+create policy "admins update profiles" on public.profiles
+  for update to authenticated using (public.is_admin()) with check (public.is_admin());
+
+-- ------------------------------------------------------------------- rooms
+drop policy if exists "anyone reads rooms"  on public.rooms;
+drop policy if exists "admins manage rooms" on public.rooms;
+
+create policy "anyone reads rooms" on public.rooms
+  for select to authenticated using (true);
+
+create policy "admins manage rooms" on public.rooms
+  for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
+-- --------------------------------------------------------- room_schedules
+drop policy if exists "anyone reads schedules"  on public.room_schedules;
+drop policy if exists "admins manage schedules" on public.room_schedules;
+
+create policy "anyone reads schedules" on public.room_schedules
+  for select to authenticated using (true);
+
+create policy "admins manage schedules" on public.room_schedules
+  for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
+-- ------------------------------------------------------------ room_blocks
+drop policy if exists "anyone reads blocks"  on public.room_blocks;
+drop policy if exists "admins manage blocks" on public.room_blocks;
+
+create policy "anyone reads blocks" on public.room_blocks
+  for select to authenticated using (true);
+
+create policy "admins manage blocks" on public.room_blocks
+  for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
+-- ---------------------------------------------------------- reservations
+drop policy if exists "anyone reads reservations" on public.reservations;
+drop policy if exists "students book for self"    on public.reservations;
+drop policy if exists "students cancel own"       on public.reservations;
+drop policy if exists "admins manage reservations" on public.reservations;
+
+-- Everyone signed in can see the day's occupancy — that is the whole point
+-- of the grid. Only the owner and admins can change a row.
+create policy "anyone reads reservations" on public.reservations
+  for select to authenticated using (true);
+
+create policy "students book for self" on public.reservations
+  for insert to authenticated
+  with check (user_id = auth.uid() and status = 'active');
+
+create policy "students cancel own" on public.reservations
+  for update to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+create policy "admins manage reservations" on public.reservations
+  for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
+-- ============================================================================
+-- REALTIME
+-- ============================================================================
 alter table public.reservations replica identity full;
+alter table public.room_blocks  replica identity full;
 
--- ----------------------------------------------------------- seed rooms
+do $$
+begin
+  alter publication supabase_realtime add table public.reservations;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.room_blocks;
+exception when duplicate_object then null;
+end $$;
+
+-- ============================================================================
+-- SEED — 5 rooms, open Mon–Sat 08:00–17:00
+-- ============================================================================
 insert into public.rooms (name, capacity, equipment)
 values
   ('DR-101 · Quiet Study', 6,  '{Whiteboard,Outlets}'),
@@ -78,3 +296,16 @@ values
   ('DR-202 · Seminar',     12, '{Whiteboard,Display}'),
   ('DR-203 · Focus Booth', 4,  '{Outlets}')
 on conflict do nothing;
+
+insert into public.room_schedules (room_id, weekday, opens_at, closes_at)
+select r.id, d.weekday, time '08:00', time '17:00'
+from public.rooms r
+cross join generate_series(1, 6) as d(weekday)  -- Mon–Sat, closed Sunday
+on conflict (room_id, weekday) do nothing;
+
+-- ============================================================================
+-- PROMOTE AN ADMIN
+-- Sign in once with the staff account so the profile row exists, then run:
+--
+--   update public.profiles set role = 'admin' where email = 'you@example.com';
+-- ============================================================================

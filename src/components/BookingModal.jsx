@@ -17,6 +17,15 @@ const EMPTY_FORM = {
   purpose: '',
 }
 
+/** Name and student number come from the signed-in profile. */
+function initialForm(defaults) {
+  return {
+    ...EMPTY_FORM,
+    studentName: defaults?.studentName ?? '',
+    studentId: defaults?.studentId ?? '',
+  }
+}
+
 /**
  * Controlled booking form.
  *
@@ -27,8 +36,15 @@ const EMPTY_FORM = {
  * @param {boolean}     saving
  * @param {string|null} error  server-side failure, surfaced inline
  */
-export default function BookingModal({ slot, saving, error, onClose, onConfirm }) {
-  const [form, setForm] = useState(EMPTY_FORM)
+export default function BookingModal({
+  slot,
+  saving,
+  error,
+  defaults,
+  onClose,
+  onConfirm,
+}) {
+  const [form, setForm] = useState(() => initialForm(defaults))
   const [spanSlots, setSpanSlots] = useState(1)
   const [touched, setTouched] = useState(false)
   const firstFieldRef = useRef(null)

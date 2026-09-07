@@ -3,9 +3,30 @@
 Replaces the physical logbook at the campus library by letting students check
 real-time discussion-room availability and reserve a slot remotely.
 
-**Stack** — React 19 (Vite) · Tailwind CSS v4 · Supabase (Postgres + Realtime) · Vercel
+**Stack** — React 19 (Vite) · Tailwind CSS v4 · Supabase (Postgres + Auth + Realtime) · Vercel
 
 ---
+
+## Roles
+
+| | Student | Admin |
+|---|---|---|
+| Sign in | Gmail + 6-digit emailed code | same form, any email domain |
+| Availability grid | view + book | view + book |
+| Own bookings | view, cancel | sees **all** bookings |
+| Rooms | — | add, edit, retire |
+| Opening hours | — | set per room, per weekday |
+| Blocked time | — | block a room for maintenance |
+
+Everyone signs up as a student. Promote a staff account by running this once,
+after they have signed in at least one time:
+
+```sql
+update public.profiles set role = 'admin' where email = 'staff@example.com';
+```
+
+Students are restricted to `@gmail.com` in the sign-in form **and** by a check
+constraint on `profiles`, so the rule survives a forged client.
 
 ## Getting started
 
@@ -15,47 +36,71 @@ cp .env.example .env.local   # fill in your Supabase URL + publishable key
 npm run dev
 ```
 
-The app runs on sample data until `rooms` is seeded, so the grid is never a
-blank page during development. An amber banner tells you when that's happening.
+## Supabase setup
 
-## Database
+**1. Run the schema.** Paste [`supabase/schema.sql`](supabase/schema.sql) into the
+SQL editor. It creates `profiles`, `rooms`, `room_schedules`, `room_blocks` and
+`reservations`, plus RLS policies, the Realtime publication, and 5 seeded rooms
+open Mon–Sat 08:00–17:00.
 
-Run [`supabase/schema.sql`](supabase/schema.sql) in the Supabase SQL editor. It creates:
+**2. Switch the email template to a code.** By default Supabase emails a magic
+*link*, but this app asks for a 6-digit *code*. Go to
+**Authentication → Email Templates → Magic Link** and make the body use the
+token instead of the URL:
 
-- `rooms` — name, capacity, equipment
-- `reservations` — room, student name/ID, group size, time range, status
-- a **GiST exclusion constraint** so overlapping active bookings on the same
-  room are rejected by Postgres, not just by the UI
-- RLS policies + the `supabase_realtime` publication for live updates
+```html
+<h2>Your LibSpace access code</h2>
+<p>Enter this code to sign in. It expires in one hour.</p>
+<p style="font-size:28px;letter-spacing:6px;"><strong>{{ .Token }}</strong></p>
+```
+
+Without this change the email still arrives, but it contains a link rather than
+the code the form expects.
+
+**3. Mind the email rate limit.** Supabase's built-in SMTP allows only a
+handful of messages per hour and is meant for testing. Before real students use
+this, add your own SMTP provider under **Authentication → SMTP Settings**.
 
 ## Deploying
 
 Push to GitHub, import the repo on Vercel, and add `VITE_SUPABASE_URL` and
-`VITE_SUPABASE_ANON_KEY` as environment variables. [`vercel.json`](vercel.json)
-already rewrites every path to `index.html` for client-side routing.
+`VITE_SUPABASE_ANON_KEY` as **Config** (not Secret) environment variables for
+all three environments. [`vercel.json`](vercel.json) already rewrites every path
+to `index.html` for client-side routing.
+
+`VITE_`-prefixed variables are compiled into the bundle at build time, so adding
+or changing one requires a redeploy.
 
 ## Structure
 
 ```
 src/
-├── App.jsx                     state owner: selected date, selected slot, toast
+├── App.jsx                     routes: auth gate -> profile setup -> workspace
 ├── components/
-│   ├── AppHeader.jsx           brand, day navigation, legend, availability count
-│   ├── TimeslotGrid.jsx        rooms × half-hour grid  (RoomRow, SlotCell, ReservationBlock)
+│   ├── AuthGate.jsx            email -> 6-digit code
+│   ├── ProfileSetup.jsx        name + student number, first sign-in only
+│   ├── AppHeader.jsx           day nav, view switch, account menu
+│   ├── TimeslotGrid.jsx        rooms × half-hour grid
 │   ├── BookingModal.jsx        controlled booking form
-│   └── Toast.jsx               transient confirmation
+│   ├── MyReservations.jsx      student's bookings, or all of them for admins
+│   ├── AdminPanel.jsx          rooms · opening hours · blocked time
+│   └── Toast.jsx
 ├── hooks/
-│   └── useReservations.js      fetch + realtime subscription + insert
+│   ├── useAuth.jsx             session + profile + role context
+│   └── useReservations.js      day fetch, realtime, insert/cancel
 └── lib/
-    ├── supabaseClient.js       singleton client
+    ├── supabaseClient.js
     ├── time.js                 slot maths — single source of truth for the day
-    └── demoData.js             fallback rooms/reservations
+    └── validation.js
 ```
 
 ## Notes
 
-- The bookable day is defined once in [`src/lib/time.js`](src/lib/time.js)
-  (`START_HOUR`, `END_HOUR`, `SLOT_MINUTES`). Change it there and the grid,
-  the modal and the queries all follow.
-- Reservations render as a single spanning block in the same CSS grid as the
-  empty cells, so a 90-minute booking reads as one card rather than three boxes.
+- The visible day window is **derived from the admin's opening hours** for that
+  weekday, widened to cover every open room, and falls back to 08:00–17:00 when
+  nothing is scheduled. See `windowForWeekday` in [`src/lib/time.js`](src/lib/time.js).
+- Reservations and blocks render as single spanning cards in the same CSS grid
+  as the empty cells, so a 90-minute booking reads as one card, not three boxes.
+- Double-booking is rejected by a **GiST exclusion constraint**, not just the
+  UI — that race is unwinnable in JavaScript alone. A booking landing on an
+  admin block is rejected by a trigger.

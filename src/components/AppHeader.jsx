@@ -1,12 +1,42 @@
-import { CalendarDays, ChevronLeft, ChevronRight, LibraryBig } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  LibraryBig,
+  LogOut,
+  ShieldCheck,
+} from 'lucide-react'
+import { useAuth } from '../hooks/useAuth'
 import { addDays, formatLongDate, isSameDay, toDateKey } from '../lib/time'
 
 /**
- * Sticky application bar: brand, day navigation and the availability legend.
+ * Sticky application bar: brand, day navigation, view switch and account menu.
  */
-export default function AppHeader({ date, onChangeDate, freeSlots, totalSlots }) {
+export default function AppHeader({ date, onChangeDate, view, onChangeView }) {
+  const { profile, user, isAdmin, signOut } = useAuth()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef(null)
+
   const today = new Date()
   const viewingToday = isSameDay(date, today)
+
+  // Dismiss the account menu on an outside click.
+  useEffect(() => {
+    if (!menuOpen) return
+    const onPointerDown = (event) => {
+      if (!menuRef.current?.contains(event.target)) setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    return () => document.removeEventListener('mousedown', onPointerDown)
+  }, [menuOpen])
+
+  const initials = (profile?.full_name || user?.email || '?')
+    .split(/[\s@.]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('')
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/60 bg-white/80 backdrop-blur-xl">
@@ -24,52 +54,99 @@ export default function AppHeader({ date, onChangeDate, freeSlots, totalSlots })
 
         <div className="mx-2 hidden h-8 w-px bg-slate-200/70 lg:block" />
 
-        {/* Day navigation */}
-        <div className="flex items-center gap-2">
+        {/* Day navigation — only relevant on the grid */}
+        {view !== 'admin' && (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center rounded-xl border border-slate-200/60 bg-white p-1 shadow-sm">
+              <NavButton label="Previous day" onClick={() => onChangeDate(addDays(date, -1))}>
+                <ChevronLeft className="size-4" strokeWidth={2.5} />
+              </NavButton>
+              <NavButton label="Next day" onClick={() => onChangeDate(addDays(date, 1))}>
+                <ChevronRight className="size-4" strokeWidth={2.5} />
+              </NavButton>
+            </div>
+
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-slate-900">
+                {formatLongDate(date)}
+              </p>
+              <p className="text-xs text-slate-500">
+                {viewingToday ? 'Today' : toDateKey(date)}
+              </p>
+            </div>
+
+            {!viewingToday && (
+              <button
+                type="button"
+                onClick={() => onChangeDate(new Date())}
+                className="ml-1 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-brand-600 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-brand-50"
+              >
+                <CalendarDays className="size-3.5" strokeWidth={2.5} />
+                Today
+              </button>
+            )}
+          </div>
+        )}
+
+        <div className="ml-auto flex items-center gap-3">
+          {/* View switch */}
           <div className="flex items-center rounded-xl border border-slate-200/60 bg-white p-1 shadow-sm">
-            <NavButton label="Previous day" onClick={() => onChangeDate(addDays(date, -1))}>
-              <ChevronLeft className="size-4" strokeWidth={2.5} />
-            </NavButton>
-            <NavButton label="Next day" onClick={() => onChangeDate(addDays(date, 1))}>
-              <ChevronRight className="size-4" strokeWidth={2.5} />
-            </NavButton>
+            <ViewTab active={view === 'grid'} onClick={() => onChangeView('grid')}>
+              Availability
+            </ViewTab>
+            <ViewTab active={view === 'mine'} onClick={() => onChangeView('mine')}>
+              My bookings
+            </ViewTab>
+            {isAdmin && (
+              <ViewTab active={view === 'admin'} onClick={() => onChangeView('admin')}>
+                Manage
+              </ViewTab>
+            )}
           </div>
 
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-900">
-              {formatLongDate(date)}
-            </p>
-            <p className="text-xs text-slate-500">
-              {viewingToday ? 'Today' : toDateKey(date)}
-            </p>
-          </div>
-
-          {!viewingToday && (
+          {/* Account */}
+          <div className="relative" ref={menuRef}>
             <button
               type="button"
-              onClick={() => onChangeDate(new Date())}
-              className="ml-1 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-brand-600 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-brand-50"
+              onClick={() => setMenuOpen((open) => !open)}
+              aria-label="Account menu"
+              className="grid size-10 place-items-center rounded-xl bg-slate-900 text-xs font-semibold text-white transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md"
             >
-              <CalendarDays className="size-3.5" strokeWidth={2.5} />
-              Today
+              {initials}
             </button>
-          )}
-        </div>
 
-        {/* Legend + availability */}
-        <div className="ml-auto flex items-center gap-5">
-          <div className="hidden items-center gap-4 md:flex">
-            <LegendChip className="border-slate-200/60 bg-white" label="Available" />
-            <LegendChip className="border-slate-200/70 bg-slate-100" label="Booked" />
-            <LegendChip className="border-brand-500 bg-brand-50" label="Selected" />
-          </div>
+            {menuOpen && (
+              <div className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-lg shadow-slate-900/5 animate-pop-in">
+                <div className="border-b border-slate-200/60 px-4 py-3">
+                  <p className="truncate text-sm font-semibold text-slate-900">
+                    {profile?.full_name || 'Student'}
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-slate-500">{user?.email}</p>
 
-          <div className="rounded-xl border border-slate-200/60 bg-white px-4 py-2 text-right shadow-sm">
-            <p className="text-sm font-semibold text-slate-900">
-              {freeSlots}
-              <span className="font-normal text-slate-400"> / {totalSlots}</span>
-            </p>
-            <p className="text-[11px] tracking-wide text-slate-500 uppercase">Slots open</p>
+                  <div className="mt-2.5 flex items-center gap-2">
+                    {isAdmin ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-md bg-brand-50 px-2 py-1 text-[11px] font-semibold text-brand-700">
+                        <ShieldCheck className="size-3" strokeWidth={2.5} />
+                        Administrator
+                      </span>
+                    ) : (
+                      <span className="rounded-md bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-600">
+                        Student · {profile?.student_id || 'no ID'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={signOut}
+                  className="flex w-full items-center gap-2.5 px-4 py-3 text-sm font-medium text-slate-600 transition-colors duration-200 hover:bg-slate-50 hover:text-slate-900"
+                >
+                  <LogOut className="size-4" strokeWidth={2} />
+                  Sign out
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -90,11 +167,19 @@ function NavButton({ label, onClick, children }) {
   )
 }
 
-function LegendChip({ className, label }) {
+function ViewTab({ active, onClick, children }) {
   return (
-    <span className="inline-flex items-center gap-2 text-xs font-medium text-slate-500">
-      <span className={`size-3.5 rounded-md border ${className}`} />
-      {label}
-    </span>
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        'rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200 ease-in-out',
+        active
+          ? 'bg-brand-600 text-white shadow-sm shadow-brand-600/25'
+          : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900',
+      ].join(' ')}
+    >
+      {children}
+    </button>
   )
 }

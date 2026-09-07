@@ -1,131 +1,117 @@
-import { useCallback, useEffect, useState } from 'react'
-import { isSupabaseConfigured, supabase } from '../lib/supabaseClient'
-import { DEMO_ROOMS, demoReservations } from '../lib/demoData'
-import { dateAtMinutes, DAY_END_MIN, DAY_START_MIN } from '../lib/time'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { supabase } from '../lib/supabaseClient'
+import { dateAtMinutes, fromDateKey, windowForWeekday } from '../lib/time'
 
 /**
- * Loads rooms + the reservations for a single day, and keeps the day in
- * sync through a Supabase Realtime subscription.
- *
- * Falls back to demo data when Supabase is not configured yet, so the grid
- * is never a blank page during development.
+ * Everything the grid needs for one day: rooms, the admin-set opening hours,
+ * one-off blocks, and the day's active reservations — kept live through a
+ * Supabase Realtime subscription.
  */
 export function useReservations(dateKey) {
   const [rooms, setRooms] = useState([])
+  const [schedules, setSchedules] = useState([])
+  const [blocks, setBlocks] = useState([])
   const [reservations, setReservations] = useState([])
   const [loading, setLoading] = useState(true)
-  const [usingDemoData, setUsingDemoData] = useState(!isSupabaseConfigured)
+  const [loadError, setLoadError] = useState(null)
 
-  /** True when a row belongs to the day currently on screen. */
-  const belongsToDay = useCallback(
-    (row) => {
-      if (!row?.start_time) return false
-      const start = new Date(row.start_time)
-      return (
-        start >= dateAtMinutes(dateKey, DAY_START_MIN) &&
-        start < dateAtMinutes(dateKey, DAY_END_MIN)
-      )
-    },
-    [dateKey],
+  const weekday = useMemo(() => fromDateKey(dateKey).getDay(), [dateKey])
+  const dayWindow = useMemo(
+    () => windowForWeekday(schedules, weekday),
+    [schedules, weekday],
   )
 
-  /* ---------- initial + per-date fetch ---------- */
-  useEffect(() => {
-    let cancelled = false
+  const refresh = useCallback(async () => {
+    setLoading(true)
+    setLoadError(null)
 
-    async function load() {
-      setLoading(true)
+    // Blocks and reservations are fetched across the whole calendar day, not
+    // just the visible window, so a block starting before opening still shows.
+    const dayStart = dateAtMinutes(dateKey, 0).toISOString()
+    const dayEnd = dateAtMinutes(dateKey, 24 * 60).toISOString()
 
-      if (!isSupabaseConfigured) {
-        if (!cancelled) {
-          setRooms(DEMO_ROOMS)
-          setReservations(demoReservations(dateKey))
-          setUsingDemoData(true)
-          setLoading(false)
-        }
-        return
-      }
-
-      const dayStart = dateAtMinutes(dateKey, DAY_START_MIN).toISOString()
-      const dayEnd = dateAtMinutes(dateKey, DAY_END_MIN).toISOString()
-
-      const [roomsResult, reservationsResult] = await Promise.all([
-        supabase.from('rooms').select('*').order('name'),
+    const [roomsResult, schedulesResult, blocksResult, reservationsResult] =
+      await Promise.all([
+        supabase.from('rooms').select('*').eq('is_active', true).order('name'),
+        supabase.from('room_schedules').select('*'),
+        supabase
+          .from('room_blocks')
+          .select('*')
+          .lt('start_time', dayEnd)
+          .gt('end_time', dayStart),
         supabase
           .from('reservations')
           .select('*')
           .eq('status', 'active')
-          .gte('start_time', dayStart)
-          .lt('start_time', dayEnd),
+          .lt('start_time', dayEnd)
+          .gt('end_time', dayStart),
       ])
 
-      if (cancelled) return
+    const failure =
+      roomsResult.error ??
+      schedulesResult.error ??
+      blocksResult.error ??
+      reservationsResult.error
 
-      if (roomsResult.error || reservationsResult.error) {
-        console.error(
-          '[LibSpace] Supabase fetch failed — falling back to demo data.',
-          roomsResult.error ?? reservationsResult.error,
-        )
-        setRooms(DEMO_ROOMS)
-        setReservations(demoReservations(dateKey))
-        setUsingDemoData(true)
-        setLoading(false)
-        return
-      }
-
-      const fetchedRooms = roomsResult.data ?? []
-      if (fetchedRooms.length === 0) {
-        // Tables exist but are empty — demo data keeps the UI meaningful.
-        setRooms(DEMO_ROOMS)
-        setReservations(demoReservations(dateKey))
-        setUsingDemoData(true)
-      } else {
-        setRooms(fetchedRooms)
-        setReservations(reservationsResult.data ?? [])
-        setUsingDemoData(false)
-      }
-
+    if (failure) {
+      console.error('[LibSpace] Load failed.', failure)
+      setLoadError(failure.message)
       setLoading(false)
+      return
     }
 
-    load()
-    return () => {
-      cancelled = true
-    }
+    setRooms(roomsResult.data ?? [])
+    setSchedules(schedulesResult.data ?? [])
+    setBlocks(blocksResult.data ?? [])
+    setReservations(reservationsResult.data ?? [])
+    setLoading(false)
   }, [dateKey])
 
-  /* ---------- realtime ---------- */
   useEffect(() => {
-    if (!isSupabaseConfigured || usingDemoData) return
+    refresh()
+  }, [refresh])
+
+  /* ---------------- realtime ---------------- */
+  useEffect(() => {
+    const sameDay = (row) => {
+      if (!row?.start_time) return false
+      const start = new Date(row.start_time)
+      return (
+        start >= dateAtMinutes(dateKey, 0) && start < dateAtMinutes(dateKey, 24 * 60)
+      )
+    }
+
+    const upsert = (setter) => (row, visible) =>
+      setter((current) => {
+        const without = current.filter((item) => item.id !== row.id)
+        return visible ? [...without, row] : without
+      })
+
+    const upsertReservation = upsert(setReservations)
+    const upsertBlock = upsert(setBlocks)
 
     const channel = supabase
-      .channel(`reservations:${dateKey}`)
+      .channel(`libspace:${dateKey}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'reservations' },
-        ({ new: row }) => {
-          if (row.status !== 'active' || !belongsToDay(row)) return
-          setReservations((current) =>
-            current.some((item) => item.id === row.id) ? current : [...current, row],
-          )
+        { event: '*', schema: 'public', table: 'reservations' },
+        ({ eventType, new: row, old }) => {
+          if (eventType === 'DELETE') {
+            setReservations((current) => current.filter((item) => item.id !== old.id))
+            return
+          }
+          upsertReservation(row, row.status === 'active' && sameDay(row))
         },
       )
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'reservations' },
-        ({ new: row }) => {
-          setReservations((current) => {
-            const withoutRow = current.filter((item) => item.id !== row.id)
-            const stillVisible = row.status === 'active' && belongsToDay(row)
-            return stillVisible ? [...withoutRow, row] : withoutRow
-          })
-        },
-      )
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'reservations' },
-        ({ old: row }) => {
-          setReservations((current) => current.filter((item) => item.id !== row.id))
+        { event: '*', schema: 'public', table: 'room_blocks' },
+        ({ eventType, new: row, old }) => {
+          if (eventType === 'DELETE') {
+            setBlocks((current) => current.filter((item) => item.id !== old.id))
+            return
+          }
+          upsertBlock(row, sameDay(row))
         },
       )
       .subscribe()
@@ -133,36 +119,39 @@ export function useReservations(dateKey) {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [dateKey, usingDemoData, belongsToDay])
+  }, [dateKey])
 
-  /* ---------- writes ---------- */
+  /* ---------------- writes ---------------- */
+
   const createReservation = useCallback(
-    async ({ room, dateKey: day, startMin, endMin, studentName, studentId, groupSize, purpose }) => {
-      const payload = {
-        room_id: room.id,
-        student_name: studentName,
-        student_id: studentId,
-        group_size: groupSize,
-        purpose: purpose || null,
-        status: 'active',
-        start_time: dateAtMinutes(day, startMin).toISOString(),
-        end_time: dateAtMinutes(day, endMin).toISOString(),
-      }
-
-      if (!isSupabaseConfigured || usingDemoData) {
-        const optimistic = { ...payload, id: `local-${crypto.randomUUID()}` }
-        setReservations((current) => [...current, optimistic])
-        return { data: optimistic, error: null }
-      }
-
+    async ({
+      room,
+      dateKey: day,
+      startMin,
+      endMin,
+      studentName,
+      studentId,
+      groupSize,
+      purpose,
+      userId,
+    }) => {
       const { data, error } = await supabase
         .from('reservations')
-        .insert(payload)
+        .insert({
+          room_id: room.id,
+          user_id: userId,
+          student_name: studentName,
+          student_id: studentId,
+          group_size: groupSize,
+          purpose: purpose || null,
+          status: 'active',
+          start_time: dateAtMinutes(day, startMin).toISOString(),
+          end_time: dateAtMinutes(day, endMin).toISOString(),
+        })
         .select()
         .single()
 
-      // The realtime INSERT handler dedupes, so adding here is safe and
-      // makes the booking feel instant even on a slow socket.
+      // Realtime will echo this back; adding it now keeps the UI instant.
       if (!error && data) {
         setReservations((current) =>
           current.some((item) => item.id === data.id) ? current : [...current, data],
@@ -171,8 +160,32 @@ export function useReservations(dateKey) {
 
       return { data, error }
     },
-    [usingDemoData],
+    [],
   )
 
-  return { rooms, reservations, loading, usingDemoData, createReservation }
+  const cancelReservation = useCallback(async (id) => {
+    const { error } = await supabase
+      .from('reservations')
+      .update({ status: 'cancelled' })
+      .eq('id', id)
+
+    if (!error) {
+      setReservations((current) => current.filter((item) => item.id !== id))
+    }
+    return { error }
+  }, [])
+
+  return {
+    rooms,
+    schedules,
+    blocks,
+    reservations,
+    dayWindow,
+    weekday,
+    loading,
+    loadError,
+    refresh,
+    createReservation,
+    cancelReservation,
+  }
 }
