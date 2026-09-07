@@ -66,9 +66,16 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into public.profiles (id, email, role, has_password)
-  values (new.id, new.email, 'student', false)
-  on conflict (id) do nothing;
+  -- Never let a profile problem block sign-up: account setup upserts the
+  -- row anyway, so a warning is preferable to a failed registration.
+  begin
+    insert into public.profiles (id, email, role, has_password)
+    values (new.id, new.email, 'student', false)
+    on conflict (id) do nothing;
+  exception when others then
+    raise warning 'handle_new_user: could not create profile for %: %',
+      new.id, sqlerrm;
+  end;
   return new;
 end;
 $$;
@@ -216,10 +223,16 @@ alter table public.room_blocks     enable row level security;
 alter table public.reservations    enable row level security;
 
 -- ---------------------------------------------------------------- profiles
+drop policy if exists "insert own profile"    on public.profiles;
 drop policy if exists "read own profile"      on public.profiles;
 drop policy if exists "admins read profiles"  on public.profiles;
 drop policy if exists "update own profile"    on public.profiles;
 drop policy if exists "admins update profiles" on public.profiles;
+
+-- Without an INSERT policy, RLS denies every insert -- including the
+-- upsert the app performs during account setup.
+create policy "insert own profile" on public.profiles
+  for insert to authenticated with check (id = auth.uid());
 
 create policy "read own profile" on public.profiles
   for select to authenticated using (id = auth.uid());

@@ -222,11 +222,14 @@ export function AuthProvider({ children }) {
 
   const value = useMemo(() => {
     const authenticated = Boolean(session?.user)
-    // Anyone without a password, or without a name, still owes us a step.
+    // Anyone without a password or a name still owes us a step. A missing
+    // profile row counts too — account setup upserts it, so sending them
+    // there repairs the account instead of dropping them into a workspace
+    // that has nothing to work with.
     const needsSetup =
       authenticated &&
-      profile !== null &&
-      (!profile.has_password || !profile.last_name)
+      !loading &&
+      (profile === null || !profile.has_password || !profile.last_name)
 
     return {
       session,
