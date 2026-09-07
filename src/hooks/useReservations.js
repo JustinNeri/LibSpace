@@ -3,6 +3,15 @@ import { supabase } from '../lib/supabaseClient'
 import { dateAtMinutes, fromDateKey, windowForWeekday } from '../lib/time'
 
 /**
+ * Natural ordering, so DR-2 comes before DR-10 rather than after it.
+ * Plain alphabetical sorting compares "1" against "2" and gets this wrong.
+ */
+const byRoomName = new Intl.Collator(undefined, {
+  numeric: true,
+  sensitivity: 'base',
+}).compare
+
+/**
  * Everything the grid needs for one day: rooms, the admin-set opening hours,
  * one-off blocks, and the day's active reservations — kept live through a
  * Supabase Realtime subscription.
@@ -32,7 +41,7 @@ export function useReservations(dateKey) {
 
     const [roomsResult, schedulesResult, blocksResult, reservationsResult] =
       await Promise.all([
-        supabase.from('rooms').select('*').eq('is_active', true).order('name'),
+        supabase.from('rooms').select('*').eq('is_active', true),
         supabase.from('room_schedules').select('*'),
         supabase
           .from('room_blocks')
@@ -60,7 +69,7 @@ export function useReservations(dateKey) {
       return
     }
 
-    setRooms(roomsResult.data ?? [])
+    setRooms([...(roomsResult.data ?? [])].sort((a, b) => byRoomName(a.name, b.name)))
     setSchedules(schedulesResult.data ?? [])
     setBlocks(blocksResult.data ?? [])
     setReservations(reservationsResult.data ?? [])

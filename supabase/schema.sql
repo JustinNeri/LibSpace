@@ -323,16 +323,16 @@ end $$;
 -- ============================================================================
 insert into public.rooms (name, capacity, equipment)
 values
-  ('DR-01 · Quiet Study',    6,  '{Whiteboard,Outlets}'),
-  ('DR-02 · Collab Pod',     8,  '{Display,Whiteboard,Outlets}'),
-  ('DR-03 · Focus Booth',    4,  '{Outlets}'),
-  ('DR-04 · Group Study',    8,  '{Whiteboard,Outlets}'),
-  ('DR-05 · Media Room',     10, '{Display,Outlets}'),
-  ('DR-06 · Seminar Room',   12, '{Whiteboard,Display,Outlets}'),
-  ('DR-07 · Thesis Room',    6,  '{Whiteboard,Display,Outlets}'),
-  ('DR-08 · Review Room',    10, '{Whiteboard,Outlets}'),
-  ('DR-09 · Presentation',   12, '{Display,Outlets}'),
-  ('DR-10 · Consultation',   4,  '{Whiteboard,Outlets}')
+  ('DR-1',  4,  '{Outlets}'),
+  ('DR-2',  4,  '{Whiteboard,Outlets}'),
+  ('DR-3',  6,  '{Whiteboard,Outlets}'),
+  ('DR-4',  6,  '{Whiteboard,Display,Outlets}'),
+  ('DR-5',  8,  '{Whiteboard,Outlets}'),
+  ('DR-6',  8,  '{Whiteboard,Display,Outlets}'),
+  ('DR-7',  10, '{Display,Outlets}'),
+  ('DR-8',  10, '{Whiteboard,Display,Outlets}'),
+  ('DR-9',  12, '{Display,Outlets}'),
+  ('DR-10', 12, '{Whiteboard,Display,Outlets}')
 on conflict do nothing;
 
 insert into public.room_schedules (room_id, weekday, opens_at, closes_at)
