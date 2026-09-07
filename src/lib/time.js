@@ -38,6 +38,13 @@ export function formatSlotLabel(minutes) {
   return `${h12}:${String(m).padStart(2, '0')}`
 }
 
+/** "8:00" — no meridiem, for use under a Morning/Afternoon heading. */
+export function formatClock(minutes) {
+  const h24 = Math.floor(minutes / 60)
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12
+  return `${h12}:${String(minutes % 60).padStart(2, '0')}`
+}
+
 /** Postgres `time` ("08:00:00") -> minutes from midnight. */
 export function parseTimeString(value) {
   if (!value) return null

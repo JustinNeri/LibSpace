@@ -4,20 +4,24 @@ import {
   Ban,
   CalendarDays,
   CalendarPlus,
-  Check,
+  CheckCircle2,
   Monitor,
   Plug,
   PenLine,
+  Sunrise,
+  Sun,
   Users,
 } from 'lucide-react'
 import {
+  SLOT_MINUTES,
   buildSlots,
+  formatClock,
   formatLongDate,
   formatTime,
   fromDateKey,
   parseTimeString,
 } from '../lib/time'
-import { buildLane, freeSpanAt } from '../lib/availability'
+import { buildLane } from '../lib/availability'
 
 const EQUIPMENT_ICONS = {
   Whiteboard: PenLine,
@@ -25,10 +29,15 @@ const EQUIPMENT_ICONS = {
   Outlets: Plug,
 }
 
+const NOON = 12 * 60
+
 /**
- * A single room's day. The primary path is the "Reserve this room" button,
- * which opens the form where the student sets their own start time and
- * duration. The chips below are a shortcut — tapping one pre-fills that start.
+ * A single room's day.
+ *
+ * Only free start times are shown as tappable pills, grouped into morning and
+ * afternoon. What is already taken is summarised as a short list of merged
+ * ranges rather than one box per half-hour — a student is deciding when they
+ * can come, so that is the only thing worth making loud.
  */
 export default function RoomSchedule({
   room,
@@ -77,7 +86,39 @@ export default function RoomSchedule({
     [room, slots, schedules, blocks, reservations, weekday, dayWindow, nowMinutes],
   )
 
-  const freeCount = lane.filter((cell) => cell.state === 'free').length
+  /** Free starts split by half of the day, plus merged unavailable ranges. */
+  const { morning, afternoon, taken, freeCount } = useMemo(() => {
+    const free = []
+    for (let i = 0; i < lane.length; i += 1) {
+      if (lane[i].state === 'free') free.push(slots[i].startMin)
+    }
+
+    // Collapse consecutive slots sharing a cell into one range.
+    const ranges = []
+    let i = 0
+    while (i < lane.length) {
+      const cell = lane[i]
+      if (cell.state === 'booked' || cell.state === 'blocked') {
+        let span = 1
+        while (i + span < lane.length && lane[i + span] === cell) span += 1
+        ranges.push({
+          cell,
+          startMin: slots[i].startMin,
+          endMin: slots[i].startMin + span * SLOT_MINUTES,
+        })
+        i += span
+      } else {
+        i += 1
+      }
+    }
+
+    return {
+      morning: free.filter((min) => min < NOON),
+      afternoon: free.filter((min) => min >= NOON),
+      taken: ranges,
+      freeCount: free.length,
+    }
+  }, [lane, slots])
 
   return (
     <div className="animate-slide-up">
@@ -91,6 +132,7 @@ export default function RoomSchedule({
       </button>
 
       <div className="rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm">
+        {/* Room identity */}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
@@ -130,7 +172,6 @@ export default function RoomSchedule({
             )}
           </div>
 
-          {/* Primary action — the student picks time and duration in the form */}
           <button
             type="button"
             onClick={() => onReserve(room, null)}
@@ -144,46 +185,35 @@ export default function RoomSchedule({
 
         <div className="mt-6 border-t border-slate-200/60 pt-6">
           {!schedule ? (
-            <div className="py-10 text-center">
-              <span className="mx-auto grid size-11 place-items-center rounded-xl bg-slate-100 text-slate-400">
-                <Ban className="size-5" strokeWidth={2} />
-              </span>
-              <p className="mt-4 text-sm font-medium text-slate-900">
-                {room.name} is closed on this day
-              </p>
-              <p className="mt-1 text-sm text-slate-500">Try another date.</p>
-            </div>
+            <Closed name={room.name} />
+          ) : freeCount === 0 ? (
+            <FullyBooked taken={taken} currentUserId={currentUserId} />
           ) : (
             <>
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm font-medium text-slate-900">
-                  {freeCount > 0
-                    ? `${freeCount} half-hour slot${freeCount === 1 ? '' : 's'} still free — tap one to start there`
-                    : 'No free slots left today'}
-                </p>
-                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
-                  <Legend className="border-emerald-200 bg-emerald-50">Free</Legend>
-                  <Legend className="border-slate-200 bg-slate-100">Booked</Legend>
-                  <Legend className="border-amber-200 bg-amber-50">Blocked</Legend>
-                </div>
-              </div>
+              <p className="text-sm font-medium text-slate-900">
+                {freeCount} free start {freeCount === 1 ? 'time' : 'times'}
+                <span className="font-normal text-slate-500">
+                  {' '}
+                  · tap one, or use Reserve to pick any time
+                </span>
+              </p>
 
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                {slots.map((slot, index) => (
-                  <SlotChip
-                    key={slot.index}
-                    slot={slot}
-                    cell={lane[index]}
-                    isMine={
-                      lane[index].state === 'booked' &&
-                      Boolean(currentUserId) &&
-                      lane[index].row?.user_id === currentUserId
-                    }
-                    disabled={freeSpanAt(lane, index) === 0}
-                    onClick={() => onReserve(room, slot.startMin)}
-                  />
-                ))}
-              </div>
+              <PillGroup
+                icon={Sunrise}
+                label="Morning"
+                times={morning}
+                onPick={(startMin) => onReserve(room, startMin)}
+              />
+              <PillGroup
+                icon={Sun}
+                label="Afternoon"
+                times={afternoon}
+                onPick={(startMin) => onReserve(room, startMin)}
+              />
+
+              {taken.length > 0 && (
+                <TakenList taken={taken} currentUserId={currentUserId} />
+              )}
             </>
           )}
         </div>
@@ -192,58 +222,110 @@ export default function RoomSchedule({
   )
 }
 
-/* ---------- pieces ---------- */
+/* ---------------- pieces ---------------- */
 
-function SlotChip({ slot, cell, isMine, disabled, onClick }) {
-  const label = `${formatTime(slot.startMin)} – ${formatTime(slot.endMin)}`
-
-  if (cell.state === 'free') {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        disabled={disabled}
-        className="group flex items-center justify-between gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50/60 px-3.5 py-3 text-left transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:border-brand-400 hover:bg-brand-50 hover:shadow-sm disabled:pointer-events-none disabled:opacity-50"
-      >
-        <span className="text-sm font-medium text-slate-900">{label}</span>
-        <span className="grid size-6 shrink-0 place-items-center rounded-lg bg-white text-emerald-600 shadow-sm transition-colors duration-200 group-hover:text-brand-600">
-          <Check className="size-3.5" strokeWidth={3} />
-        </span>
-      </button>
-    )
-  }
-
-  const styles = {
-    booked: isMine
-      ? 'border-brand-200/80 bg-brand-50 text-brand-700'
-      : 'border-slate-200/70 bg-slate-100 text-slate-500',
-    blocked: 'border-amber-200/80 bg-amber-50 text-amber-700',
-    past: 'border-slate-200/50 bg-slate-50 text-slate-400',
-    closed: 'border-slate-200/40 bg-slate-50 text-slate-300',
-  }
-
-  const note = {
-    booked: isMine ? 'Your booking' : 'Booked',
-    blocked: cell.row?.reason ?? 'Unavailable',
-    past: 'Passed',
-    closed: 'Closed',
-  }
+function PillGroup({ icon: Icon, label, times, onPick }) {
+  if (times.length === 0) return null
 
   return (
-    <div
-      className={`flex flex-col justify-center rounded-xl border px-3.5 py-3 ${styles[cell.state]}`}
-    >
-      <span className="text-sm font-medium">{label}</span>
-      <span className="mt-0.5 truncate text-xs opacity-80">{note[cell.state]}</span>
+    <div className="mt-5">
+      <p className="mb-2.5 inline-flex items-center gap-1.5 text-xs font-semibold tracking-wider text-slate-400 uppercase">
+        <Icon className="size-3.5" strokeWidth={2} />
+        {label}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {times.map((startMin) => (
+          <button
+            key={startMin}
+            type="button"
+            onClick={() => onPick(startMin)}
+            className="min-w-18 rounded-xl border border-emerald-200/80 bg-emerald-50/70 px-3.5 py-2.5 text-sm font-semibold text-emerald-800 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:border-brand-400 hover:bg-brand-600 hover:text-white hover:shadow-md hover:shadow-brand-600/25"
+          >
+            {formatClock(startMin)}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
 
-function Legend({ className, children }) {
+/** Merged ranges of what is already taken — quiet, informational only. */
+function TakenList({ taken, currentUserId }) {
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className={`size-3 rounded border ${className}`} />
-      {children}
-    </span>
+    <div className="mt-6 border-t border-slate-200/60 pt-5">
+      <p className="mb-2.5 text-xs font-semibold tracking-wider text-slate-400 uppercase">
+        Not available
+      </p>
+      <ul className="space-y-1.5">
+        {taken.map((range) => {
+          const isMine =
+            range.cell.state === 'booked' &&
+            Boolean(currentUserId) &&
+            range.cell.row?.user_id === currentUserId
+
+          return (
+            <li
+              key={`${range.startMin}-${range.cell.state}`}
+              className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm"
+            >
+              <span
+                className={[
+                  'size-1.5 shrink-0 rounded-full',
+                  range.cell.state === 'blocked' ? 'bg-amber-400' : 'bg-slate-300',
+                ].join(' ')}
+              />
+              <span className="font-medium text-slate-600">
+                {formatTime(range.startMin)} – {formatTime(range.endMin)}
+              </span>
+              <span
+                className={[
+                  'text-xs',
+                  isMine ? 'font-semibold text-brand-600' : 'text-slate-400',
+                ].join(' ')}
+              >
+                {range.cell.state === 'blocked'
+                  ? (range.cell.row?.reason ?? 'Unavailable')
+                  : isMine
+                    ? 'Your booking'
+                    : 'Booked'}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
+function FullyBooked({ taken, currentUserId }) {
+  return (
+    <div>
+      <div className="py-6 text-center">
+        <span className="mx-auto grid size-11 place-items-center rounded-xl bg-slate-100 text-slate-400">
+          <CheckCircle2 className="size-5" strokeWidth={2} />
+        </span>
+        <p className="mt-4 text-sm font-medium text-slate-900">
+          No free time left today
+        </p>
+        <p className="mt-1 text-sm text-slate-500">
+          Try another room, or move to the next day.
+        </p>
+      </div>
+      {taken.length > 0 && <TakenList taken={taken} currentUserId={currentUserId} />}
+    </div>
+  )
+}
+
+function Closed({ name }) {
+  return (
+    <div className="py-10 text-center">
+      <span className="mx-auto grid size-11 place-items-center rounded-xl bg-slate-100 text-slate-400">
+        <Ban className="size-5" strokeWidth={2} />
+      </span>
+      <p className="mt-4 text-sm font-medium text-slate-900">
+        {name} is closed on this day
+      </p>
+      <p className="mt-1 text-sm text-slate-500">Try another date.</p>
+    </div>
   )
 }
