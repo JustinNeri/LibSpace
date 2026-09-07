@@ -36,6 +36,7 @@ function initialForm(defaults) {
 export default function BookingModal({
   booking,
   startOptions = [],
+  asAdmin = false,
   saving,
   progress,
   error,
@@ -118,8 +119,9 @@ export default function BookingModal({
       : groupSize > room.capacity
         ? `${room.name} seats ${room.capacity}.`
         : null,
+    // Staff have the IDs in hand at the desk, so photos are optional there.
     photos:
-      photos.length < (validGroup ? groupSize : MIN_GROUP_SIZE)
+      !asAdmin && photos.length < (validGroup ? groupSize : MIN_GROUP_SIZE)
         ? 'Add one ID photo for every member.'
         : null,
   }
@@ -166,7 +168,7 @@ export default function BookingModal({
         <header className="flex items-start justify-between gap-4 border-b border-slate-200/60 px-6 py-5">
           <div className="min-w-0">
             <p className="text-xs font-semibold tracking-wider text-brand-600 uppercase">
-              New reservation
+              {asAdmin ? 'Walk-in · confirmed on save' : 'New reservation'}
             </p>
             <h2
               id="booking-modal-title"
@@ -326,6 +328,7 @@ export default function BookingModal({
             <IdPhotoUpload
               photos={photos}
               required={validGroup ? groupSize : MIN_GROUP_SIZE}
+              optional={asAdmin}
               onChange={setPhotos}
               disabled={saving}
             />
@@ -376,7 +379,7 @@ export default function BookingModal({
               ) : (
                 <>
                   <Check className="size-4" strokeWidth={2.5} />
-                  Confirm booking
+                  {asAdmin ? 'Log walk-in' : 'Confirm booking'}
                 </>
               )}
             </button>

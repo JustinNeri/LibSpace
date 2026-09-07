@@ -5,11 +5,12 @@ import {
   ChevronRight,
   LibraryBig,
   LogOut,
+  Settings,
   ShieldCheck,
 } from 'lucide-react'
 import NotificationBell from './NotificationBell'
 import { useAuth } from '../hooks/useAuth'
-import { addDays, formatLongDate, isSameDay, toDateKey } from '../lib/time'
+import { addDays, formatLongDate, fromDateKey, isSameDay, toDateKey } from '../lib/time'
 import { UNIVERSITY_SHORT } from '../lib/constants'
 
 /**
@@ -59,7 +60,7 @@ export default function AppHeader({ date, onChangeDate, view, onChangeView }) {
         <div className="mx-2 hidden h-8 w-px bg-slate-200/70 lg:block" />
 
         {/* Day navigation — only relevant on the grid */}
-        {view !== 'admin' && (
+        {['rooms', 'grid', 'desk'].includes(view) && (
           <div className="flex items-center gap-2">
             <div className="flex items-center rounded-xl border border-slate-200/60 bg-white p-1 shadow-sm">
               <NavButton label="Previous day" onClick={() => onChangeDate(addDays(date, -1))}>
@@ -70,13 +71,24 @@ export default function AppHeader({ date, onChangeDate, view, onChangeView }) {
               </NavButton>
             </div>
 
-            <div className="min-w-0">
+            <div className="relative min-w-0">
               <p className="truncate text-sm font-semibold text-slate-900">
                 {formatLongDate(date)}
               </p>
               <p className="text-xs text-slate-500">
                 {viewingToday ? 'Today' : toDateKey(date)}
               </p>
+              {/* Invisible native picker over the label — one tap jumps to
+                  any date instead of stepping a day at a time. */}
+              <input
+                type="date"
+                aria-label="Pick a date"
+                value={toDateKey(date)}
+                onChange={(event) => {
+                  if (event.target.value) onChangeDate(fromDateKey(event.target.value))
+                }}
+                className="absolute inset-0 cursor-pointer opacity-0"
+              />
             </div>
 
             {!viewingToday && (
@@ -94,7 +106,7 @@ export default function AppHeader({ date, onChangeDate, view, onChangeView }) {
 
         <div className="ml-auto flex items-center gap-3">
           {/* View switch */}
-          <div className="flex items-center rounded-xl border border-slate-200/60 bg-white p-1 shadow-sm">
+          <div className="flex flex-wrap items-center rounded-xl border border-slate-200/60 bg-white p-1 shadow-sm">
             <ViewTab active={view === 'rooms'} onClick={() => onChangeView('rooms')}>
               Rooms
             </ViewTab>
@@ -106,11 +118,20 @@ export default function AppHeader({ date, onChangeDate, view, onChangeView }) {
             </ViewTab>
             {isAdmin && (
               <>
+                <ViewTab active={view === 'desk'} onClick={() => onChangeView('desk')}>
+                  Desk
+                </ViewTab>
                 <ViewTab
                   active={view === 'requests'}
                   onClick={() => onChangeView('requests')}
                 >
                   Requests
+                </ViewTab>
+                <ViewTab
+                  active={view === 'history'}
+                  onClick={() => onChangeView('history')}
+                >
+                  History
                 </ViewTab>
                 <ViewTab active={view === 'admin'} onClick={() => onChangeView('admin')}>
                   Manage
@@ -159,6 +180,18 @@ export default function AppHeader({ date, onChangeDate, view, onChangeView }) {
                     </p>
                   )}
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    onChangeView('settings')
+                  }}
+                  className="flex w-full items-center gap-2.5 border-b border-slate-200/60 px-4 py-3 text-sm font-medium text-slate-600 transition-colors duration-200 hover:bg-slate-50 hover:text-slate-900"
+                >
+                  <Settings className="size-4" strokeWidth={2} />
+                  Account settings
+                </button>
 
                 <button
                   type="button"

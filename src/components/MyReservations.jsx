@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CalendarX2, Clock, Loader2, MapPin, XCircle } from 'lucide-react'
+import { CalendarX2, Clock, DoorOpen, Loader2, MapPin, XCircle } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../hooks/useAuth'
 import { formatLongDate, formatTime, minutesFromDate } from '../lib/time'
@@ -16,6 +16,8 @@ const STATUS_STYLES = {
   pending: { label: 'Awaiting approval', className: 'bg-amber-50 text-amber-700' },
   approved: { label: 'Confirmed', className: 'bg-emerald-50 text-emerald-700' },
   rejected: { label: 'Declined', className: 'bg-rose-50 text-rose-700' },
+  no_show: { label: 'Released — no check-in', className: 'bg-rose-50 text-rose-700' },
+  completed: { label: 'Finished', className: 'bg-slate-100 text-slate-500' },
 }
 
 export default function MyReservations({ onCancelled }) {
@@ -34,7 +36,7 @@ export default function MyReservations({ onCancelled }) {
       let query = supabase
         .from('reservations')
         .select('*, rooms(name)')
-        .in('status', ['pending', 'approved', 'rejected'])
+        .in('status', ['pending', 'approved', 'rejected', 'no_show'])
         .gte('end_time', new Date().toISOString())
         .order('start_time')
 
@@ -53,6 +55,22 @@ export default function MyReservations({ onCancelled }) {
       cancelled = true
     }
   }, [user, isAdmin])
+
+  /** Hand the remaining time back when a group finishes early. */
+  const release = async (id) => {
+    setCancellingId(id)
+    const { error: releaseError } = await supabase.rpc('check_out_reservation', {
+      reservation_id: id,
+    })
+    setCancellingId(null)
+
+    if (releaseError) {
+      setError(releaseError.message)
+      return
+    }
+    setRows((current) => current.filter((row) => row.id !== id))
+    onCancelled?.()
+  }
 
   const cancel = async (id) => {
     setCancellingId(id)
@@ -146,7 +164,26 @@ export default function MyReservations({ onCancelled }) {
                   {row.rejection_reason || 'No reason was given.'}
                 </p>
               )}
+
+              {row.status === 'no_show' && (
+                <p className="mt-2 flex items-start gap-1.5 text-xs text-rose-600">
+                  <XCircle className="mt-0.5 size-3.5 shrink-0" strokeWidth={2} />
+                  Nobody checked in, so the room went back to other students.
+                </p>
+              )}
             </div>
+
+            {row.checked_in_at && !row.checked_out_at && (
+              <button
+                type="button"
+                onClick={() => release(row.id)}
+                disabled={cancellingId === row.id}
+                className="inline-flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-brand-100 disabled:pointer-events-none disabled:opacity-50"
+              >
+                <DoorOpen className="size-4" strokeWidth={2} />
+                Done early
+              </button>
+            )}
 
             <button
               type="button"
@@ -157,7 +194,7 @@ export default function MyReservations({ onCancelled }) {
               {cancellingId === row.id ? (
                 <Loader2 className="size-4 animate-spin" strokeWidth={2.5} />
               ) : null}
-              {row.status === 'rejected' ? 'Dismiss' : 'Cancel'}
+              {['rejected', 'no_show'].includes(row.status) ? 'Dismiss' : 'Cancel'}
             </button>
           </div>
         )

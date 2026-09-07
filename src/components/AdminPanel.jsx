@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
+import { useSettings } from '../hooks/useSettings'
 import {
   WEEKDAY_NAMES,
   dateAtMinutes,
@@ -22,6 +23,7 @@ const TABS = [
   { id: 'rooms', label: 'Rooms' },
   { id: 'schedule', label: 'Opening hours' },
   { id: 'blocks', label: 'Blocked time' },
+  { id: 'rules', label: 'Booking rules' },
 ]
 
 /**
@@ -64,6 +66,7 @@ export default function AdminPanel({ rooms, schedules, blocks, dateKey, onChange
             onChanged={onChanged}
           />
         )}
+        {tab === 'rules' && <RulesTab />}
       </div>
     </section>
   )
@@ -564,6 +567,119 @@ function BlocksTab({ rooms, blocks, dateKey, onChanged }) {
         </div>
       </form>
     </div>
+  )
+}
+
+/* ========================== Booking rules ========================== */
+
+const RULE_FIELDS = [
+  {
+    key: 'max_active_bookings',
+    label: 'Active bookings per student',
+    hint: 'How many upcoming reservations one student may hold at once.',
+    min: 1,
+    max: 20,
+    step: 1,
+  },
+  {
+    key: 'max_hours_per_day',
+    label: 'Hours per student per day',
+    hint: 'Total room time one student may book across a single day.',
+    min: 0.5,
+    max: 24,
+    step: 0.5,
+  },
+  {
+    key: 'advance_days',
+    label: 'Booking opens (days ahead)',
+    hint: 'How far into the future students may reserve.',
+    min: 1,
+    max: 180,
+    step: 1,
+  },
+  {
+    key: 'no_show_grace_minutes',
+    label: 'No-show grace (minutes)',
+    hint: 'After this long without a check-in, the room is released automatically.',
+    min: 0,
+    max: 120,
+    step: 5,
+  },
+]
+
+function RulesTab() {
+  const { rules, loading, save } = useSettings()
+  const [draft, setDraft] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const [saved, setSaved] = useState(false)
+
+  // Fill the form once the stored rules arrive.
+  useEffect(() => {
+    if (!loading) setDraft((current) => current ?? { ...rules })
+  }, [loading, rules])
+
+  if (loading || !draft) {
+    return <div className="h-40 animate-pulse rounded-xl bg-slate-100" />
+  }
+
+  const submit = async (event) => {
+    event.preventDefault()
+    setBusy(true)
+    setError(null)
+    setSaved(false)
+
+    const { error: saveError } = await save({
+      max_active_bookings: Number(draft.max_active_bookings),
+      max_hours_per_day: Number(draft.max_hours_per_day),
+      advance_days: Number(draft.advance_days),
+      no_show_grace_minutes: Number(draft.no_show_grace_minutes),
+    })
+
+    setBusy(false)
+    if (saveError) setError(saveError.message)
+    else setSaved(true)
+  }
+
+  return (
+    <form onSubmit={submit} className="max-w-xl">
+      <p className="text-sm text-slate-500">
+        These limits are enforced by the database, so they hold no matter what a
+        browser sends.
+      </p>
+
+      <div className="mt-5 space-y-4">
+        {RULE_FIELDS.map((field) => (
+          <div key={field.key} className="rounded-xl border border-slate-200/60 p-4">
+            <label className="text-sm font-medium text-slate-900">{field.label}</label>
+            <p className="mt-0.5 text-xs text-slate-500">{field.hint}</p>
+            <input
+              type="number"
+              min={field.min}
+              max={field.max}
+              step={field.step}
+              value={draft[field.key]}
+              onChange={(event) =>
+                setDraft({ ...draft, [field.key]: event.target.value })
+              }
+              className={`${fieldClass} max-w-32`}
+            />
+          </div>
+        ))}
+      </div>
+
+      {error && <p className="mt-4 text-xs font-medium text-rose-600">{error}</p>}
+
+      <div className="mt-5 flex items-center gap-3">
+        <PrimaryButton busy={busy}>
+          <Check className="size-4" strokeWidth={2.5} />
+          Save rules
+        </PrimaryButton>
+        {saved && !busy && (
+          <span className="text-xs font-medium text-emerald-600">Saved</span>
+        )}
+      </div>
+    </form>
   )
 }
 

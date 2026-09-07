@@ -10,7 +10,13 @@ const MB = 1024 * 1024
  * Files are held in memory here and only uploaded once the booking is
  * confirmed, so an abandoned form leaves nothing behind in storage.
  */
-export default function IdPhotoUpload({ photos, required, onChange, disabled }) {
+export default function IdPhotoUpload({
+  photos,
+  required,
+  optional = false,
+  onChange,
+  disabled,
+}) {
   const inputRef = useRef(null)
   const [error, setError] = useState(null)
   const [previews, setPreviews] = useState([])
@@ -48,12 +54,15 @@ export default function IdPhotoUpload({ photos, required, onChange, disabled }) 
     onChange(photos.filter((_, i) => i !== index))
   }
 
-  const complete = photos.length >= required
+  const complete = optional || photos.length >= required
 
   return (
     <div>
       <div className="mb-2 flex items-baseline justify-between gap-2">
-        <label className="text-sm font-medium text-slate-700">Student ID photos</label>
+        <label className="text-sm font-medium text-slate-700">
+          Student ID photos
+          {optional && <span className="ml-1.5 text-xs text-slate-400">optional</span>}
+        </label>
         <span
           className={[
             'text-xs font-semibold',

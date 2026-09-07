@@ -37,6 +37,10 @@ export function useReservations(dateKey) {
     setLoading(true)
     setLoadError(null)
 
+    // Cron sweeps every 5 minutes; this closes the gap for whoever is
+    // looking right now. Safe to call repeatedly.
+    await supabase.rpc('release_no_shows')
+
     // Blocks and reservations are fetched across the whole calendar day, not
     // just the visible window, so a block starting before opening still shows.
     const dayStart = dateAtMinutes(dateKey, 0).toISOString()
@@ -54,8 +58,9 @@ export function useReservations(dateKey) {
         supabase
           .from('reservations')
           .select('*')
-          // A pending request holds its slot until staff decide.
-          .in('status', ['pending', 'approved'])
+          // Pending holds the slot until staff decide; completed keeps the
+          // past visible. No-shows and rejections hand the time back.
+          .in('status', ['pending', 'approved', 'completed'])
           .lt('start_time', dayEnd)
           .gt('end_time', dayStart),
       ])
@@ -115,7 +120,8 @@ export function useReservations(dateKey) {
           }
           upsertReservation(
             row,
-            ['pending', 'approved'].includes(row.status) && sameDay(row),
+            ['pending', 'approved', 'completed'].includes(row.status) &&
+              sameDay(row),
           )
         },
       )
@@ -158,6 +164,7 @@ export function useReservations(dateKey) {
       purpose,
       userId,
       photos = [],
+      asAdmin = false,
       onProgress,
     }) => {
       const folder = `${userId}/${crypto.randomUUID()}`
@@ -194,7 +201,10 @@ export function useReservations(dateKey) {
           group_size: groupSize,
           purpose: purpose || null,
           id_photos: uploaded,
-          status: 'pending',
+          // Staff logging a walk-in at the desk have already seen the group,
+          // so there is nothing left to approve.
+          status: asAdmin ? 'approved' : 'pending',
+          created_by_admin: asAdmin,
           start_time: dateAtMinutes(day, startMin).toISOString(),
           end_time: dateAtMinutes(day, endMin).toISOString(),
         })
@@ -217,6 +227,13 @@ export function useReservations(dateKey) {
     },
     [],
   )
+
+  const releaseReservation = useCallback(async (id) => {
+    const { error } = await supabase.rpc('check_out_reservation', {
+      reservation_id: id,
+    })
+    return { error }
+  }, [])
 
   const cancelReservation = useCallback(async (id) => {
     const { error } = await supabase
@@ -242,5 +259,6 @@ export function useReservations(dateKey) {
     refresh,
     createReservation,
     cancelReservation,
+    releaseReservation,
   }
 }

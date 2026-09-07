@@ -3,6 +3,11 @@ import { AlertCircle, Loader2 } from 'lucide-react'
 import AdminPanel from './components/AdminPanel'
 import ApprovalQueue from './components/ApprovalQueue'
 import DaySummary from './components/DaySummary'
+import DeskView from './components/DeskView'
+import HistoryView from './components/HistoryView'
+import ProfileSettings from './components/ProfileSettings'
+import RoomFilters from './components/RoomFilters'
+import { EMPTY_FILTERS, filterRooms } from './lib/roomFilters'
 import AppHeader from './components/AppHeader'
 import AuthGate from './components/AuthGate'
 import BookingModal from './components/BookingModal'
@@ -52,6 +57,7 @@ function Workspace() {
   const [date, setDate] = useState(() => new Date())
   const [view, setView] = useState('rooms')
   const [openRoom, setOpenRoom] = useState(null)
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [booking, setBooking] = useState(null)
   const [saving, setSaving] = useState(false)
   const [progress, setProgress] = useState(null)
@@ -83,6 +89,8 @@ function Workspace() {
 
   // Re-resolve the open room against fresh data so an admin edit shows up.
   const activeRoom = openRoom ? (rooms.find((r) => r.id === openRoom.id) ?? null) : null
+
+  const visibleRooms = useMemo(() => filterRooms(rooms, filters), [rooms, filters])
 
   /**
    * Every start time the booking form may offer, recomputed from live data
@@ -118,6 +126,7 @@ function Workspace() {
       const { error: insertError } = await createReservation({
         ...details,
         userId: user.id,
+        asAdmin: isAdmin,
         onProgress: setProgress,
       })
 
@@ -131,10 +140,12 @@ function Workspace() {
 
       setBooking(null)
       setToast(
-        `Request sent for ${details.room.name} · ${formatTime(details.startMin)} – ${formatTime(details.endMin)}. You'll be notified once staff review it.`,
+        isAdmin
+          ? `${details.room.name} logged · ${formatTime(details.startMin)} – ${formatTime(details.endMin)}`
+          : `Request sent for ${details.room.name} · ${formatTime(details.startMin)} – ${formatTime(details.endMin)}. You'll be notified once staff review it.`,
       )
     },
-    [createReservation, user],
+    [createReservation, user, isAdmin],
   )
 
   const closeModal = useCallback(() => {
@@ -153,6 +164,9 @@ function Workspace() {
             {view === 'grid' && 'Room availability'}
             {view === 'mine' && (isAdmin ? 'All upcoming bookings' : 'My bookings')}
             {view === 'requests' && 'Reservation requests'}
+            {view === 'desk' && 'Front desk'}
+            {view === 'history' && 'Usage history'}
+            {view === 'settings' && 'Account settings'}
             {view === 'admin' && 'Manage rooms'}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
@@ -168,6 +182,11 @@ function Workspace() {
                 : 'Track approval and cancel anything you no longer need.')}
             {view === 'requests' &&
               'Check the student IDs, then approve or decline. The student is notified either way.'}
+            {view === 'desk' &&
+              'Check groups in when they arrive and out when they leave. Rooms nobody claims are released automatically.'}
+            {view === 'history' &&
+              'Every reservation and what became of it. Filter, search and export.'}
+            {view === 'settings' && 'Update your details or change your password.'}
             {view === 'admin' &&
               'Add rooms, set weekly opening hours, and block time for maintenance.'}
           </p>
@@ -200,6 +219,15 @@ function Workspace() {
           />
         )}
 
+        {view === 'rooms' && !activeRoom && !loading && rooms.length > 0 && (
+          <RoomFilters
+            filters={filters}
+            onChange={setFilters}
+            matchCount={visibleRooms.length}
+            totalCount={rooms.length}
+          />
+        )}
+
         {view === 'rooms' &&
           (activeRoom ? (
             <RoomSchedule
@@ -217,7 +245,7 @@ function Workspace() {
             />
           ) : (
             <RoomList
-              rooms={rooms}
+              rooms={visibleRooms}
               reservations={reservations}
               blocks={blocks}
               schedules={schedules}
@@ -255,6 +283,14 @@ function Workspace() {
 
         {view === 'requests' && isAdmin && <ApprovalQueue onDecided={refresh} />}
 
+        {view === 'desk' && isAdmin && (
+          <DeskView dateKey={dateKey} onChanged={refresh} />
+        )}
+
+        {view === 'history' && isAdmin && <HistoryView />}
+
+        {view === 'settings' && <ProfileSettings />}
+
         {view === 'admin' && isAdmin && (
           <AdminPanel
             rooms={rooms}
@@ -271,6 +307,7 @@ function Workspace() {
         key={booking ? `${booking.room.id}-${booking.startMin ?? 'any'}` : 'closed'}
         booking={booking}
         startOptions={bookingStarts}
+        asAdmin={isAdmin}
         saving={saving}
         progress={progress}
         error={error}

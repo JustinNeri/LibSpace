@@ -213,6 +213,13 @@ export function AuthProvider({ children }) {
     [session],
   )
 
+  /** Re-read the profile after the user edits it in settings. */
+  const refreshProfile = useCallback(async () => {
+    if (!session?.user) return
+    const row = await loadProfile(session.user.id)
+    if (row) setProfile(row)
+  }, [session, loadProfile])
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut()
     setSession(null)
@@ -245,6 +252,7 @@ export function AuthProvider({ children }) {
       verifyCode,
       beginPasswordReset,
       completeAccount,
+      refreshProfile,
       signOut,
     }
   }, [
@@ -257,6 +265,7 @@ export function AuthProvider({ children }) {
     verifyCode,
     beginPasswordReset,
     completeAccount,
+    refreshProfile,
     signOut,
   ])
 
