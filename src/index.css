@@ -67,7 +67,7 @@
      `brand-50`, which is the app's "available / confirmed / active" fill and
      must keep reading as a signal rather than as more background. Sitting a
      step darker than brand-50 is what buys that separation. */
-  --color-paper: oklch(0.945 0.014 158);
+  --color-paper: oklch(0.880 0.040 160);
 
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 
