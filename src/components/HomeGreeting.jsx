@@ -26,14 +26,14 @@ export default function HomeGreeting({ onViewBookings }) {
     <section className="mb-5">
       <div className="flex items-start gap-4">
         <div className="min-w-0 flex-1">
-          <p className="text-sm text-slate-700">{greeting},</p>
+          <p className="text-sm text-slate-600">{greeting},</p>
           <h1 className="font-display mt-0.5 truncate text-[1.75rem] leading-tight font-semibold text-slate-900 sm:text-[2rem]">
             {name}
             <span aria-hidden className="ml-2">
               🌿
             </span>
           </h1>
-          <p className="mt-1.5 text-sm text-slate-700">{line}</p>
+          <p className="mt-1.5 text-sm text-slate-600">{line}</p>
         </div>
 
         {/* Decoration, so it is hidden from screen readers and dropped on the

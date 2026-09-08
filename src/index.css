@@ -10,26 +10,27 @@
   --font-display: "Fraunces", ui-serif, Georgia, "Times New Roman", serif;
 
   /* ------------------------------------------------------------------ ink
-     The neutral ramp is Tailwind's `slate` deliberately overridden with a
-     warm, paper-toned grey. Every `text-slate-*` / `bg-slate-*` already in
-     the codebase picks this up, so the whole app warms up at once instead
-     of the cold blue-grey it shared with every other AI-styled dashboard. */
-  /* Deliberately further from white than a default ramp: the app is white
-     cards on paper, and at 1.6% apart the cards had nothing to lift off.
-     These two move together so a chip on a white card stays distinct from
-     the panel behind it. Note this is the *inset* neutral — the page ground
-     itself is `--color-paper` below. */
-  --color-slate-50: oklch(0.970 0.007 85);
-  --color-slate-100: oklch(0.947 0.009 84);
-  --color-slate-200: oklch(0.922 0.008 82);
-  --color-slate-300: oklch(0.862 0.010 80);
-  --color-slate-400: oklch(0.706 0.013 75);
-  --color-slate-500: oklch(0.578 0.014 72);
-  --color-slate-600: oklch(0.472 0.015 70);
-  --color-slate-700: oklch(0.390 0.016 68);
-  --color-slate-800: oklch(0.296 0.015 66);
-  --color-slate-900: oklch(0.228 0.014 64);
-  --color-slate-950: oklch(0.158 0.012 62);
+     A green-grey ramp: every step carries a trace of the brand's hue rather
+     than being a true neutral. This is not decoration — the page ground is
+     green, and a warm beige-grey border or a brown-grey caption sitting on
+     green reads as dirty rather than as neutral. Tinting the greys to the
+     same family as the ground is what stops the interface looking muddy.
+     (The ramp was warm when the page was cream; the ground moved, so the
+     greys had to move with it.)
+
+     `slate-50` is the *inset* neutral — recessed panels inside a white card.
+     The page ground itself is `--color-paper`, further down. */
+  --color-slate-50: oklch(0.970 0.006 150);
+  --color-slate-100: oklch(0.950 0.007 150);
+  --color-slate-200: oklch(0.922 0.008 150);
+  --color-slate-300: oklch(0.862 0.010 150);
+  --color-slate-400: oklch(0.706 0.012 150);
+  --color-slate-500: oklch(0.578 0.013 150);
+  --color-slate-600: oklch(0.472 0.014 150);
+  --color-slate-700: oklch(0.390 0.014 150);
+  --color-slate-800: oklch(0.296 0.013 150);
+  --color-slate-900: oklch(0.228 0.012 150);
+  --color-slate-950: oklch(0.158 0.010 150);
 
   /* --------------------------------------------------------------- brand
      Deep pine. Reads as "go / available" on the availability grid, which is
@@ -72,7 +73,7 @@
      `slate-700` and darker clear 4.5:1 on it, which is why secondary copy
      sitting straight on the page uses 700 rather than the 500 it uses
      inside a white card. */
-  --color-paper: oklch(0.830 0.050 160);
+  --color-paper: oklch(0.915 0.024 152);
 
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 
@@ -159,8 +160,8 @@
   .surface {
     @apply rounded-2xl border border-slate-200/80 bg-white;
     box-shadow:
-      0 1px 2px oklch(0.228 0.014 64 / 0.04),
-      0 8px 20px -14px oklch(0.228 0.014 64 / 0.16);
+      0 1px 2px oklch(0.228 0.012 150 / 0.05),
+      0 8px 20px -14px oklch(0.228 0.012 150 / 0.14);
   }
 
   /* The one text input in the app. Auth screens and account settings both
@@ -177,7 +178,7 @@
   .surface-hover:hover {
     @apply border-brand-300;
     box-shadow:
-      0 1px 2px oklch(0.228 0.014 64 / 0.05),
+      0 1px 2px oklch(0.228 0.012 150 / 0.06),
       0 14px 28px -16px oklch(0.362 0.072 164 / 0.32);
   }
   @media (hover: hover) {
