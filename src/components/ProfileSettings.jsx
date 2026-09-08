@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import {
   AlertCircle,
+  Camera,
   Check,
   Eye,
   EyeOff,
@@ -12,14 +13,26 @@ import {
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../hooks/useAuth'
 import { MIN_PASSWORD_LENGTH, passwordProblem } from '../lib/validation'
-import { COURSES, OTHER_COURSE, YEAR_LEVELS, formatFullName } from '../lib/constants'
-import { initialsFor } from '../lib/nav'
+import {
+  AVATAR_BUCKET,
+  AVATAR_MAX_BYTES,
+  AVATAR_TYPES,
+  COURSES,
+  OTHER_COURSE,
+  YEAR_LEVELS,
+  formatFullName,
+} from '../lib/constants'
+import Avatar from './Avatar'
+import { forgetAvatar } from '../lib/avatarUrl'
 
 const KNOWN_PROGRAMS = COURSES.flatMap((group) => group.programs)
 
 /** Edit the details captured at sign-up, and change the password. */
 export default function ProfileSettings() {
   const { user, profile, isAdmin, refreshProfile, signOut } = useAuth()
+
+  const [photoBusy, setPhotoBusy] = useState(false)
+  const [photoError, setPhotoError] = useState(null)
 
   const storedCourse = profile?.course ?? ''
   const [details, setDetails] = useState({
@@ -108,13 +121,128 @@ export default function ProfileSettings() {
     setPasswordSaved(true)
   }
 
+  /**
+   * Replace the profile photo.
+   *
+   * The file goes to a fresh path every time rather than overwriting one: a
+   * signed URL and the browser cache both key on the path, so reusing it
+   * would keep serving the old picture. The previous file is removed once the
+   * profile row points at the new one, so a failure part-way leaves the old
+   * photo working rather than none at all.
+   */
+  const changePhoto = async (file) => {
+    if (!file) return
+    setPhotoError(null)
+
+    if (!AVATAR_TYPES.includes(file.type)) {
+      setPhotoError('Choose a JPG, PNG or WebP image.')
+      return
+    }
+    if (file.size > AVATAR_MAX_BYTES) {
+      setPhotoError(`That image is over ${AVATAR_MAX_BYTES / (1024 * 1024)} MB.`)
+      return
+    }
+
+    setPhotoBusy(true)
+    const previous = profile?.avatar_path ?? null
+    const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+    const path = `${user.id}/${crypto.randomUUID()}.${extension}`
+
+    const { error: uploadError } = await supabase.storage
+      .from(AVATAR_BUCKET)
+      .upload(path, file, { contentType: file.type, upsert: false })
+
+    if (uploadError) {
+      setPhotoBusy(false)
+      setPhotoError(uploadError.message)
+      return
+    }
+
+    const { error: saveError } = await supabase
+      .from('profiles')
+      .update({ avatar_path: path })
+      .eq('id', user.id)
+
+    if (saveError) {
+      await supabase.storage.from(AVATAR_BUCKET).remove([path])
+      setPhotoBusy(false)
+      setPhotoError(saveError.message)
+      return
+    }
+
+    if (previous) {
+      await supabase.storage.from(AVATAR_BUCKET).remove([previous])
+      forgetAvatar(previous)
+    }
+
+    await refreshProfile()
+    setPhotoBusy(false)
+  }
+
+  const removePhoto = async () => {
+    const previous = profile?.avatar_path
+    if (!previous) return
+
+    setPhotoBusy(true)
+    setPhotoError(null)
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ avatar_path: null })
+      .eq('id', user.id)
+
+    if (error) {
+      setPhotoBusy(false)
+      setPhotoError(error.message)
+      return
+    }
+
+    await supabase.storage.from(AVATAR_BUCKET).remove([previous])
+    forgetAvatar(previous)
+    await refreshProfile()
+    setPhotoBusy(false)
+  }
+
   return (
     <div className="grid max-w-4xl items-start gap-4 lg:grid-cols-2">
       {/* Who this account belongs to */}
       <section className="surface flex flex-col gap-4 p-6 sm:flex-row sm:items-center lg:col-span-2">
-        <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-brand-700 text-lg font-bold text-white">
-          {initialsFor(profile, user)}
-        </span>
+        <div className="relative shrink-0 self-start">
+          <Avatar
+            profile={profile}
+            user={user}
+            className="size-16"
+            rounded="rounded-2xl"
+            textClass="text-lg"
+          />
+          <label
+            className={[
+              'absolute -right-2 -bottom-2 grid size-8 cursor-pointer place-items-center',
+              'rounded-full bg-slate-900 text-white ring-2 ring-white transition-colors',
+              'duration-200 hover:bg-slate-700',
+              photoBusy ? 'pointer-events-none opacity-60' : '',
+            ].join(' ')}
+            title="Change photo"
+          >
+            {photoBusy ? (
+              <Loader2 className="size-4 animate-spin" strokeWidth={2.5} />
+            ) : (
+              <Camera className="size-4" strokeWidth={2} />
+            )}
+            <span className="sr-only">Change profile photo</span>
+            <input
+              type="file"
+              accept={AVATAR_TYPES.join(',')}
+              disabled={photoBusy}
+              onChange={(event) => {
+                changePhoto(event.target.files?.[0])
+                // Let the same file be picked again after a failure.
+                event.target.value = ''
+              }}
+              className="sr-only"
+            />
+          </label>
+        </div>
 
         <div className="min-w-0 flex-1">
           <p className="font-display truncate text-xl font-semibold text-slate-900">
@@ -139,6 +267,24 @@ export default function ProfileSettings() {
               </span>
             )}
           </div>
+
+          {profile?.avatar_path && (
+            <button
+              type="button"
+              onClick={removePhoto}
+              disabled={photoBusy}
+              className="mt-2 text-xs font-semibold text-slate-500 underline decoration-slate-300 underline-offset-4 transition-colors duration-200 hover:text-rose-700 disabled:pointer-events-none disabled:opacity-50"
+            >
+              Remove photo
+            </button>
+          )}
+
+          {photoError && (
+            <p className="mt-2 flex items-start gap-1.5 text-xs font-medium text-rose-600">
+              <AlertCircle className="mt-0.5 size-3 shrink-0" strokeWidth={2.5} />
+              {photoError}
+            </p>
+          )}
         </div>
       </section>
 

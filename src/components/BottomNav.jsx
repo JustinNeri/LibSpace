@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { LogOut, MoreHorizontal, X } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
-import { initialsFor, navItems } from '../lib/nav'
+import { navItems } from '../lib/nav'
+import Avatar from './Avatar'
 
 const FIXED_TABS = 4
 
@@ -92,9 +93,7 @@ export default function BottomNav({ view, onChangeView }) {
                 className="mx-auto block h-1 w-10 rounded-full bg-slate-200"
               />
               <div className="flex items-center gap-3 px-5 pt-4 pb-3">
-                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-slate-900 text-xs font-bold text-white">
-                  {initialsFor(profile, user)}
-                </span>
+                <Avatar profile={profile} user={user} className="size-10" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-slate-900">
                     {profile?.full_name || 'Student'}

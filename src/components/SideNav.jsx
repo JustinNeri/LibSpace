@@ -1,7 +1,8 @@
 import { LogOut, ShieldCheck } from 'lucide-react'
 import { LibSpaceMark } from './Logo'
 import { useAuth } from '../hooks/useAuth'
-import { initialsFor, navItems } from '../lib/nav'
+import { navItems } from '../lib/nav'
+import Avatar from './Avatar'
 import { LIBRARY_NAME, UNIVERSITY_SHORT } from '../lib/constants'
 
 /**
@@ -61,9 +62,7 @@ export default function SideNav({ view, onChangeView }) {
       {/* Who you are */}
       <div className="border-t border-slate-300 p-3">
         <div className="flex items-center gap-3 rounded-xl px-2 py-2">
-          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-slate-900 text-[11px] font-bold text-white">
-            {initialsFor(profile, user)}
-          </span>
+          <Avatar profile={profile} user={user} className="size-9" textClass="text-[11px]" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-slate-900">
               {profile?.full_name || 'Student'}

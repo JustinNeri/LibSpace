@@ -21,6 +21,11 @@ export const UNIVERSITY_LOGO = '/hau-logo.png'
 /** HAU requires a group of at least this many to reserve a discussion room. */
 export const MIN_GROUP_SIZE = 5
 
+/** A user's own profile photo. Private bucket, signed on demand. */
+export const AVATAR_BUCKET = 'avatars'
+export const AVATAR_MAX_BYTES = 2 * 1024 * 1024
+export const AVATAR_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+
 /** One photo of a student ID per member, so the count follows group size. */
 export const ID_PHOTO_MAX_BYTES = 5 * 1024 * 1024
 export const ID_PHOTO_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic']
