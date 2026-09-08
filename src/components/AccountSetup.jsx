@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import AuthLayout, { SectionHeading, Steps, authField } from './AuthLayout'
+import { forgetView } from '../lib/nav'
 import { MIN_PASSWORD_LENGTH, passwordProblem } from '../lib/validation'
 import {
   COURSES,
@@ -108,7 +109,15 @@ export default function AccountSetup() {
     )
     setBusy(false)
 
-    if (saveError) setError(saveError.message)
+    if (saveError) {
+      setError(saveError.message)
+      return
+    }
+
+    // A newly created account opens on the rooms list. Recovery deliberately
+    // does not clear it: someone resetting a password mid-session should come
+    // back to the screen they were on.
+    if (!isRecovery) forgetView()
   }
 
   return (

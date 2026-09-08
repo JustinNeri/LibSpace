@@ -41,9 +41,24 @@ export default function TimeslotGrid({
     [dayWindow],
   )
 
+  /**
+   * Fixed columns, deliberately not `minmax(--slot-w, 1fr)`.
+   *
+   * The header and every room row are separate grids, each one a flex item
+   * sized by its own content. With a `1fr` maximum, a row holding a spanning
+   * card was sized by that card's max-content — "Maintenance · 12:00 PM –
+   * 1:00 PM" is far wider than the two 64px columns it covers — so those
+   * columns stretched and every column after them shifted right. The card
+   * sat in the correct grid column; that column was no longer under the time
+   * the header printed above it.
+   *
+   * A fixed track width makes all the grids geometrically identical, so a
+   * column means the same instant in the axis and in every row. Cards clip
+   * to their span instead (they already carry `min-w-0` and `truncate`).
+   */
   const gridTemplate = useMemo(
     () => ({
-      gridTemplateColumns: `repeat(${slots.length}, minmax(var(--slot-w), 1fr))`,
+      gridTemplateColumns: `repeat(${slots.length}, var(--slot-w))`,
     }),
     [slots.length],
   )

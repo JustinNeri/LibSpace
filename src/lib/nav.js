@@ -40,6 +40,54 @@ export function navItems(isAdmin) {
   ]
 }
 
+/* ------------------------------------------------------- view memory */
+
+/**
+ * Which view a browser tab was last on.
+ *
+ * `sessionStorage`, not `localStorage`: it survives a reload and a restored
+ * tab, but a new tab starts on the rooms list instead of inheriting wherever
+ * another tab happened to be. Every access is guarded — Safari's private mode
+ * throws on the first read rather than returning null.
+ */
+const VIEW_KEY = 'libspace:view'
+
+export function restoreView(isAdmin) {
+  try {
+    const saved = sessionStorage.getItem(VIEW_KEY)
+    // The stored view has to be one this user can actually open: staff views
+    // linger in a tab that later signs in as a student, and landing on an
+    // admin screen you cannot use is worse than landing on the rooms.
+    if (saved && navItems(isAdmin).some((item) => item.key === saved)) return saved
+  } catch {
+    // Storage disabled — fall through to the default.
+  }
+  return 'rooms'
+}
+
+export function rememberView(view) {
+  try {
+    sessionStorage.setItem(VIEW_KEY, view)
+  } catch {
+    // Not being able to remember the view is not worth breaking navigation.
+  }
+}
+
+/**
+ * Forget it, so the next person to use this tab starts at the rooms list.
+ *
+ * Signing out has to do this. Without it the view outlives the session: sign
+ * out from Account, register a new account in the same tab, and the workspace
+ * opens on Account — someone else's last position, restored for you.
+ */
+export function forgetView() {
+  try {
+    sessionStorage.removeItem(VIEW_KEY)
+  } catch {
+    // Nothing stored, nothing to clear.
+  }
+}
+
 /** Views that are about a particular day, and so want the date strip. */
 export const DATED_VIEWS = ['rooms', 'grid', 'desk']
 

@@ -8,6 +8,7 @@ import {
 } from 'react'
 import { isSupabaseConfigured, supabase } from '../lib/supabaseClient'
 import { STUDENT_EMAIL_DOMAIN, isGmailAddress } from '../lib/validation'
+import { forgetView } from '../lib/nav'
 import { formatFullName } from '../lib/constants'
 
 const AuthContext = createContext(null)
@@ -238,6 +239,10 @@ export function AuthProvider({ children }) {
     setSession(null)
     setProfile(null)
     setResetRequested(false)
+    // The remembered view belongs to the session, not to the tab. Leaving it
+    // behind opens the next person's workspace on the last screen this one
+    // was looking at.
+    forgetView()
   }, [])
 
   const value = useMemo(() => {

@@ -25,7 +25,7 @@ import { AuthProvider, useAuth } from './hooks/useAuth'
 import { useReservations } from './hooks/useReservations'
 import { useSettings } from './hooks/useSettings'
 import { isSupabaseConfigured } from './lib/supabaseClient'
-import { DATED_VIEWS, navItems, viewCopy } from './lib/nav'
+import { DATED_VIEWS, rememberView, restoreView, viewCopy } from './lib/nav'
 import {
   SLOT_MINUTES,
   addDays,
@@ -406,40 +406,6 @@ function Workspace() {
       <Toast message={toast} onDismiss={() => setToast(null)} />
     </div>
   )
-}
-
-/* ------------------------------------------------------- view memory */
-
-/**
- * Which view you were last on, per browser tab.
- *
- * The workspace should not lose your place, and `sessionStorage` is the right
- * scope for it: it survives a reload and a restored tab, but a new tab starts
- * on the rooms list rather than inheriting wherever another tab happened to
- * be. Every access is guarded — Safari's private mode throws on the very
- * first read rather than returning null.
- */
-const VIEW_KEY = 'libspace:view'
-
-function restoreView(isAdmin) {
-  try {
-    const saved = sessionStorage.getItem(VIEW_KEY)
-    // A stored view has to still be one this user is allowed to open: staff
-    // views persist in a tab that later signs in as a student, and landing
-    // on an admin screen you cannot use is worse than landing on the rooms.
-    if (saved && navItems(isAdmin).some((item) => item.key === saved)) return saved
-  } catch {
-    // Storage disabled — fall through to the default.
-  }
-  return 'rooms'
-}
-
-function rememberView(view) {
-  try {
-    sessionStorage.setItem(VIEW_KEY, view)
-  } catch {
-    // Not being able to remember the view is not worth breaking navigation.
-  }
 }
 
 /* -------------------------------------------------------------- states */
