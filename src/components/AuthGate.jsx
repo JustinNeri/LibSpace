@@ -167,7 +167,6 @@ export default function AuthGate() {
       : mode === 'login'
         ? {
             title: 'Welcome back',
-            emoji: '👋',
             subtitle: 'Find your space and get studying.',
           }
         : mode === 'register'

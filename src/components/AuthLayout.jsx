@@ -31,11 +31,6 @@ export default function AuthLayout({
             <div className="mb-6 animate-slide-up">
               <h1 className="font-display text-[2.25rem] leading-[1.1] font-semibold text-white sm:text-[2.5rem]">
                 {hero.title}
-                {hero.emoji && (
-                  <span aria-hidden className="ml-2.5 inline-block">
-                    {hero.emoji}
-                  </span>
-                )}
               </h1>
               {hero.subtitle && (
                 <p className="mt-2.5 text-[0.9375rem] leading-relaxed text-white/70">
