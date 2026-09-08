@@ -14,10 +14,11 @@
      warm, paper-toned grey. Every `text-slate-*` / `bg-slate-*` already in
      the codebase picks this up, so the whole app warms up at once instead
      of the cold blue-grey it shared with every other AI-styled dashboard. */
-  /* The page ground and the tint just below it. These two are deliberately
-     further from white than a default ramp: the app is white cards on paper,
-     and at 1.6% apart the cards had nothing to lift off. They move together
-     so a chip on a white card stays distinct from the page behind it. */
+  /* Deliberately further from white than a default ramp: the app is white
+     cards on paper, and at 1.6% apart the cards had nothing to lift off.
+     These two move together so a chip on a white card stays distinct from
+     the panel behind it. Note this is the *inset* neutral — the page ground
+     itself is `--color-paper` below. */
   --color-slate-50: oklch(0.970 0.007 85);
   --color-slate-100: oklch(0.947 0.009 84);
   --color-slate-200: oklch(0.922 0.008 82);
@@ -59,6 +60,15 @@
   --color-accent-800: oklch(0.438 0.118 40);
   --color-accent-900: oklch(0.378 0.094 41);
 
+  /* --------------------------------------------------------------- paper
+     The page ground: the brand's pine, taken almost all the way to white.
+     It is a role of its own rather than a step on the neutral ramp, because
+     it has to clear two colours at once — white, so cards lift off it, and
+     `brand-50`, which is the app's "available / confirmed / active" fill and
+     must keep reading as a signal rather than as more background. Sitting a
+     step darker than brand-50 is what buys that separation. */
+  --color-paper: oklch(0.945 0.014 158);
+
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 
   --animate-fade-in: fade-in 200ms var(--ease-out-soft) both;
@@ -94,12 +104,12 @@
 
   body {
     @apply text-slate-900;
-    background-color: var(--color-slate-50);
-    /* One quiet warm wash, no coloured blobs. The page should read as paper
-       under a lamp, not as a gradient. */
+    background-color: var(--color-paper);
+    /* One quiet wash for depth at the top. Kept faint now that the ground
+       carries the colour itself — green on green would only turn muddy. */
     background-image: radial-gradient(
       1200px 640px at 50% -12%,
-      oklch(0.512 0.108 162 / 0.10),
+      oklch(0.512 0.108 162 / 0.05),
       transparent 60%
     );
     background-attachment: fixed;
