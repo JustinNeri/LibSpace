@@ -59,7 +59,7 @@ export default function NotificationBell() {
         aria-label={
           unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'
         }
-        className="relative grid size-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 transition-colors duration-200 hover:border-slate-300 hover:text-slate-900"
+        className="relative grid size-10 place-items-center rounded-xl border border-white/15 bg-white/10 text-white/80 transition-colors duration-200 hover:border-white/30 hover:text-white"
       >
         <Bell className="size-4.5" strokeWidth={2} />
         {unreadCount > 0 && (

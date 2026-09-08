@@ -26,14 +26,14 @@ export default function HomeGreeting({ onViewBookings }) {
     <section className="mb-5">
       <div className="flex items-start gap-4">
         <div className="min-w-0 flex-1">
-          <p className="text-sm text-slate-600">{greeting},</p>
-          <h1 className="font-display mt-0.5 truncate text-[1.75rem] leading-tight font-semibold text-slate-900 sm:text-[2rem]">
+          <p className="text-sm text-white/65">{greeting},</p>
+          <h1 className="font-display mt-0.5 truncate text-[1.75rem] leading-tight font-semibold text-white sm:text-[2rem]">
             {name}
             <span aria-hidden className="ml-2">
               🌿
             </span>
           </h1>
-          <p className="mt-1.5 text-sm text-slate-600">{line}</p>
+          <p className="mt-1.5 text-sm text-white/65">{line}</p>
         </div>
 
         {/* Decoration, so it is hidden from screen readers and dropped on the
@@ -77,8 +77,8 @@ function NextBookingCard({ onViewBookings }) {
       className={[
         'mt-4 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl border px-4 py-3.5',
         pending
-          ? 'border-amber-200 bg-amber-50/70'
-          : 'border-brand-200 bg-brand-50/70',
+          ? 'border-amber-200 bg-amber-50'
+          : 'border-brand-200 bg-brand-50',
       ].join(' ')}
     >
       <span

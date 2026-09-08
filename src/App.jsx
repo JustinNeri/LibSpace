@@ -237,22 +237,22 @@ function Workspace() {
               <button
                 type="button"
                 onClick={() => setOpenRoom(null)}
-                className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 transition-all duration-200 ease-in-out hover:-translate-x-0.5 hover:text-slate-900"
+                className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-white/70 transition-all duration-200 ease-in-out hover:-translate-x-0.5 hover:text-white"
               >
                 <ArrowLeft className="size-4" strokeWidth={2.5} />
                 All rooms
               </button>
             )}
             {isRoomsList ? (
-              <h2 className="font-display text-xl leading-tight font-semibold text-slate-900 sm:text-2xl">
+              <h2 className="font-display text-xl leading-tight font-semibold text-white sm:text-2xl">
                 {title}
               </h2>
             ) : (
-              <h1 className="text-[1.75rem] leading-tight font-semibold text-slate-900 sm:text-4xl">
+              <h1 className="text-[1.75rem] leading-tight font-semibold text-white sm:text-4xl">
                 {title}
               </h1>
             )}
-            <p className="mt-1.5 max-w-2xl text-sm text-slate-600">{blurb}</p>
+            <p className="mt-1.5 max-w-2xl text-sm text-white/65">{blurb}</p>
           </div>
 
           {DATED_VIEWS.includes(view) && (
@@ -355,7 +355,7 @@ function Workspace() {
                 loading={loading}
                 onSelectSlot={(slot) => openBooking(slot.room, slot.startMin)}
               />
-              <p className="mt-4 text-xs text-slate-600">
+              <p className="mt-4 text-xs text-white/55">
                 Times shown in your local timezone · Bookings run up to 2 hours
               </p>
             </>
@@ -436,10 +436,10 @@ function ConfigError() {
         <span className="mx-auto grid size-11 place-items-center rounded-xl bg-amber-100 text-amber-700">
           <AlertCircle className="size-5" strokeWidth={2} />
         </span>
-        <p className="mt-4 text-sm font-semibold text-slate-900">
+        <p className="mt-4 text-sm font-semibold text-white">
           Supabase is not configured
         </p>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 text-sm text-white/65">
           Set{' '}
           <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs">
             VITE_SUPABASE_URL

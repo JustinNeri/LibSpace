@@ -69,11 +69,11 @@
      must keep reading as a signal rather than as more background. Sitting a
      step darker than brand-50 is what buys that separation.
 
-     Going darker than this starts costing text: at this value only
-     `slate-700` and darker clear 4.5:1 on it, which is why secondary copy
-     sitting straight on the page uses 700 rather than the 500 it uses
-     inside a white card. */
-  --color-paper: oklch(0.915 0.024 152);
+     It is the sign-in screen's own field, so the two halves of the product
+     are the same world: white cards floating on pine, exactly as the login
+     card floats on it. Copy sitting straight on the canvas is therefore
+     white — the slate ramp is for text on the white cards only. */
+  --color-paper: oklch(0.305 0.058 165);
 
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 
@@ -111,12 +111,12 @@
   body {
     @apply text-slate-900;
     background-color: var(--color-paper);
-    /* One quiet wash for depth at the top. Kept faint now that the ground
-       carries the colour itself — green on green would only turn muddy. */
+    /* A lift at the top of the field, the same shape as the glow behind
+       the sign-in card. */
     background-image: radial-gradient(
       1200px 640px at 50% -12%,
-      oklch(0.512 0.108 162 / 0.05),
-      transparent 60%
+      oklch(0.602 0.116 162 / 0.16),
+      transparent 62%
     );
     background-attachment: fixed;
     background-repeat: no-repeat;

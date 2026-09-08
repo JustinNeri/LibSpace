@@ -19,15 +19,15 @@ export default function SideNav({ view, onChangeView }) {
   const items = navItems(isAdmin)
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-slate-300 bg-white lg:flex">
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-white/10 bg-brand-900 lg:flex">
       {/* Brand */}
       <div className="flex items-center gap-3 px-5 py-5">
         <LibSpaceMark className="size-10 shrink-0" />
         <div className="min-w-0">
-          <p className="font-display text-base leading-tight font-semibold text-slate-900">
+          <p className="font-display text-base leading-tight font-semibold text-white">
             LibSpace
           </p>
-          <p className="truncate text-[11px] text-slate-500">
+          <p className="truncate text-[11px] text-white/60">
             {UNIVERSITY_SHORT} · {LIBRARY_NAME}
           </p>
         </div>
@@ -45,12 +45,12 @@ export default function SideNav({ view, onChangeView }) {
               className={[
                 'relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-200',
                 active
-                  ? 'bg-brand-50 text-brand-800'
-                  : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900',
+                  ? 'bg-white/12 text-white'
+                  : 'text-white/65 hover:bg-white/8 hover:text-white',
               ].join(' ')}
             >
               <Icon
-                className={active ? 'size-4.5 text-brand-600' : 'size-4.5'}
+                className={active ? 'size-4.5 text-brand-200' : 'size-4.5'}
                 strokeWidth={2}
               />
               {label}
@@ -60,28 +60,28 @@ export default function SideNav({ view, onChangeView }) {
       </nav>
 
       {/* Who you are */}
-      <div className="border-t border-slate-300 p-3">
+      <div className="border-t border-white/10 p-3">
         <div className="flex items-center gap-3 rounded-xl px-2 py-2">
           <Avatar profile={profile} user={user} className="size-9" textClass="text-[11px]" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-slate-900">
+            <p className="truncate text-sm font-semibold text-white">
               {profile?.full_name || 'Student'}
             </p>
-            <p className="truncate text-[11px] text-slate-500">{user?.email}</p>
+            <p className="truncate text-[11px] text-white/55">{user?.email}</p>
           </div>
           <button
             type="button"
             onClick={signOut}
             aria-label="Sign out"
             title="Sign out"
-            className="grid size-8 shrink-0 place-items-center rounded-lg text-slate-400 transition-colors duration-200 hover:bg-rose-50 hover:text-rose-600"
+            className="grid size-8 shrink-0 place-items-center rounded-lg text-white/55 transition-colors duration-200 hover:bg-rose-500/20 hover:text-rose-200"
           >
             <LogOut className="size-4" strokeWidth={2} />
           </button>
         </div>
 
         {isAdmin && (
-          <p className="mt-1 inline-flex items-center gap-1.5 rounded-md bg-brand-50 px-2 py-1 text-[10px] font-bold tracking-wider text-brand-700 uppercase">
+          <p className="mt-1 inline-flex items-center gap-1.5 rounded-md bg-white/12 px-2 py-1 text-[10px] font-bold tracking-wider text-brand-100 uppercase">
             <ShieldCheck className="size-3" strokeWidth={2.5} />
             Administrator
           </p>

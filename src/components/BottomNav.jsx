@@ -48,7 +48,7 @@ export default function BottomNav({ view, onChangeView }) {
     <>
       <nav
         aria-label="Main"
-        className="pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-slate-300 bg-white/95 backdrop-blur-lg lg:hidden"
+        className="pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-brand-900/95 backdrop-blur-lg lg:hidden"
       >
         <div className="flex items-stretch">
           {primary.map(({ key, short, Icon }) => (
@@ -164,7 +164,7 @@ function Tab({ active, label, Icon, onClick }) {
       <span
         className={[
           'grid h-8 w-14 place-items-center rounded-full transition-colors duration-200',
-          active ? 'bg-brand-50 text-brand-700' : 'text-slate-400',
+          active ? 'bg-white/15 text-white' : 'text-white/55',
         ].join(' ')}
       >
         <Icon className="size-5" strokeWidth={active ? 2.4 : 2} />
@@ -172,7 +172,7 @@ function Tab({ active, label, Icon, onClick }) {
       <span
         className={[
           'text-[10px] font-semibold tracking-tight transition-colors duration-200',
-          active ? 'text-brand-800' : 'text-slate-500',
+          active ? 'text-white' : 'text-white/60',
         ].join(' ')}
       >
         {label}
