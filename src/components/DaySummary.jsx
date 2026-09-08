@@ -94,6 +94,28 @@ export default function DaySummary({
 
   const shut = dayClosedReason !== null
 
+  // Three tiles reading "—", "0" and "0" is a band of chrome that says
+  // nothing. When there is nothing left to book, one sentence says it better
+  // and gives the room list back a screen of space.
+  const nothingToShow = shut || (stats.offHours && stats.freeSlots === 0)
+
+  if (nothingToShow) {
+    return (
+      <div className="surface mb-5 flex items-center gap-3 px-4 py-3.5">
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-500">
+          <Moon className="size-4.5" strokeWidth={2} />
+        </span>
+        <p className="text-sm text-slate-600">
+          {dayClosedReason === 'past'
+            ? 'This date has passed. Pick today or a later date to book.'
+            : dayClosedReason === 'too-far'
+              ? 'Booking is not open this far ahead yet. Pick an earlier date.'
+              : 'The library is closed for today. Pick tomorrow to book a room.'}
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div className="mb-5 grid grid-cols-3 gap-2 sm:gap-3">
       <Stat

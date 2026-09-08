@@ -167,10 +167,29 @@ export default function RoomList({
                     </span>
                   )}
                 </div>
-                <p className="mt-0.5 inline-flex items-center gap-1.5 text-sm text-slate-500">
-                  <Users className="size-3.5" strokeWidth={2} />
-                  Up to {room.capacity} people
-                </p>
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Users className="size-3.5" strokeWidth={2} />
+                    Seats {room.capacity}
+                  </span>
+                  {room.equipment?.map((item) => {
+                    const Icon = EQUIPMENT_ICONS[item]
+                    return (
+                      <span
+                        key={item}
+                        title={item}
+                        className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600"
+                      >
+                        {Icon && <Icon className="size-3" strokeWidth={2} />}
+                        {/* Icon only on a phone: three labelled chips wrapped
+                            to a second line and put the height straight back
+                            into the card. */}
+                        <span className="hidden sm:inline">{item}</span>
+                        <span className="sr-only sm:hidden">{item}</span>
+                      </span>
+                    )
+                  })}
+                </div>
               </div>
 
               <ArrowUpRight
@@ -221,22 +240,6 @@ export default function RoomList({
               </div>
             </div>
 
-            {room.equipment?.length > 0 && (
-              <div className="relative mt-4 flex flex-wrap gap-1.5 border-t border-slate-200/70 pt-4">
-                {room.equipment.map((item) => {
-                  const Icon = EQUIPMENT_ICONS[item]
-                  return (
-                    <span
-                      key={item}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100/80 px-2 py-1 text-[11px] font-medium text-slate-600"
-                    >
-                      {Icon && <Icon className="size-3" strokeWidth={2} />}
-                      {item}
-                    </span>
-                  )
-                })}
-              </div>
-            )}
           </button>
         )
       })}

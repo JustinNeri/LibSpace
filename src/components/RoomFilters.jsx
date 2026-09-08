@@ -1,4 +1,5 @@
-import { SlidersHorizontal, X } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronDown, SlidersHorizontal, X } from 'lucide-react'
 import {
   CAPACITY_STEPS,
   EMPTY_FILTERS,
@@ -14,6 +15,11 @@ import {
  * they wrap onto one or two lines as normal.
  */
 export default function RoomFilters({ filters, onChange, matchCount, totalCount }) {
+  // Closed by default on a phone: an untouched filter strip was a whole band
+  // of chrome above the rooms, every visit.
+  const [open, setOpen] = useState(false)
+  const active = isFiltered(filters)
+
   const toggleEquipment = (item) =>
     onChange({
       ...filters,
@@ -24,11 +30,28 @@ export default function RoomFilters({ filters, onChange, matchCount, totalCount 
 
   return (
     <div className="surface mb-4 px-3 py-3 sm:px-4">
-      <div className="mb-2.5 flex items-center justify-between gap-3">
-        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.14em] text-slate-400 uppercase">
+      <div className="flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.14em] text-slate-500 uppercase lg:pointer-events-none"
+        >
           <SlidersHorizontal className="size-3.5" strokeWidth={2.5} />
           Filter
-        </span>
+          {active && (
+            <span className="rounded-full bg-brand-600 px-1.5 text-[10px] text-white">
+              on
+            </span>
+          )}
+          <ChevronDown
+            className={[
+              'size-3.5 transition-transform duration-200 lg:hidden',
+              open ? 'rotate-180' : '',
+            ].join(' ')}
+            strokeWidth={2.5}
+          />
+        </button>
 
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-500">
@@ -48,7 +71,13 @@ export default function RoomFilters({ filters, onChange, matchCount, totalCount 
         </div>
       </div>
 
-      <div className="scrollbar-none -mx-3 flex items-center gap-1.5 overflow-x-auto px-3 lg:mx-0 lg:flex-wrap lg:gap-2 lg:overflow-visible lg:px-0">
+      <div
+        className={[
+          'scrollbar-none -mx-3 mt-2.5 items-center gap-1.5 overflow-x-auto px-3',
+          'lg:mx-0 lg:flex lg:flex-wrap lg:gap-2 lg:overflow-visible lg:px-0',
+          open ? 'flex' : 'hidden',
+        ].join(' ')}
+      >
         {CAPACITY_STEPS.map((size) => (
           <Chip
             key={size}
