@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertCircle, Loader2 } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Loader2 } from 'lucide-react'
 import AdminPanel from './components/AdminPanel'
 import ApprovalQueue from './components/ApprovalQueue'
+import BottomNav from './components/BottomNav'
 import DaySummary from './components/DaySummary'
+import DayStrip from './components/DayStrip'
 import DeskView from './components/DeskView'
 import HistoryView from './components/HistoryView'
 import ProfileSettings from './components/ProfileSettings'
 import RoomFilters from './components/RoomFilters'
+import SideNav from './components/SideNav'
 import { EMPTY_FILTERS, filterRooms } from './lib/roomFilters'
 import AppHeader from './components/AppHeader'
 import AuthGate from './components/AuthGate'
@@ -20,6 +23,7 @@ import Toast from './components/Toast'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { useReservations } from './hooks/useReservations'
 import { isSupabaseConfigured } from './lib/supabaseClient'
+import { DATED_VIEWS, viewCopy } from './lib/nav'
 import {
   SLOT_MINUTES,
   buildSlots,
@@ -117,6 +121,14 @@ function Workspace() {
     [dateKey],
   )
 
+  const changeView = useCallback((next) => {
+    setView(next)
+    // Leaving the rooms list should not strand you inside a room's day when
+    // you come back to it.
+    setOpenRoom(null)
+    window.scrollTo({ top: 0 })
+  }, [])
+
   const handleConfirm = useCallback(
     async (details) => {
       setSaving(true)
@@ -153,154 +165,156 @@ function Workspace() {
     setError(null)
   }, [])
 
+  const { title, blurb } = viewCopy(view, {
+    isAdmin,
+    roomName: activeRoom?.name ?? null,
+    slotMinutes: SLOT_MINUTES,
+  })
+
   return (
-    <div className="min-h-screen bg-slate-50">
-      <AppHeader date={date} onChangeDate={setDate} view={view} onChangeView={setView} />
+    <div className="min-h-screen">
+      <SideNav view={view} onChangeView={changeView} />
 
-      <main className="mx-auto max-w-[1400px] px-6 py-8">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-            {view === 'rooms' && (activeRoom ? activeRoom.name : 'Discussion rooms')}
-            {view === 'grid' && 'Room availability'}
-            {view === 'mine' && (isAdmin ? 'All upcoming bookings' : 'My bookings')}
-            {view === 'requests' && 'Reservation requests'}
-            {view === 'desk' && 'Front desk'}
-            {view === 'history' && 'Usage history'}
-            {view === 'settings' && 'Account settings'}
-            {view === 'admin' && 'Manage rooms'}
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {view === 'rooms' &&
-              (activeRoom
-                ? 'Pick a free time to reserve this room.'
-                : 'Tap a room to see when it is free today.')}
-            {view === 'grid' &&
-              `Pick any open ${SLOT_MINUTES}-minute block to reserve a discussion room.`}
-            {view === 'mine' &&
-              (isAdmin
-                ? 'Every active reservation across the library.'
-                : 'Track approval and cancel anything you no longer need.')}
-            {view === 'requests' &&
-              'Check the student IDs, then approve or decline. The student is notified either way.'}
-            {view === 'desk' &&
-              'Check groups in when they arrive and out when they leave. Rooms nobody claims are released automatically.'}
-            {view === 'history' &&
-              'Every reservation and what became of it. Filter, search and export.'}
-            {view === 'settings' && 'Update your details or change your password.'}
-            {view === 'admin' &&
-              'Add rooms, set weekly opening hours, and block time for maintenance.'}
-          </p>
-        </div>
+      {/* Everything sits clear of the fixed rail on desktop, and clear of the
+          fixed tab bar on phones. */}
+      <div className="lg:pl-60">
+        <AppHeader />
 
-        {loadError && (
-          <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-rose-200/70 bg-rose-50 px-4 py-3">
-            <AlertCircle className="mt-0.5 size-4 shrink-0 text-rose-600" strokeWidth={2} />
-            <p className="text-sm text-rose-800">
-              {loadError} — have you run{' '}
-              <code className="rounded bg-rose-100 px-1.5 py-0.5 text-xs">
-                supabase/schema.sql
-              </code>
-              ?
-            </p>
+        <main className="mx-auto max-w-[1280px] px-4 pt-4 pb-28 sm:px-6 lg:pt-2 lg:pb-14">
+          <div className="mb-5">
+            {view === 'rooms' && activeRoom && (
+              <button
+                type="button"
+                onClick={() => setOpenRoom(null)}
+                className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition-all duration-200 ease-in-out hover:-translate-x-0.5 hover:text-slate-900"
+              >
+                <ArrowLeft className="size-4" strokeWidth={2.5} />
+                All rooms
+              </button>
+            )}
+            <h1 className="text-[1.75rem] leading-tight font-semibold text-slate-900 sm:text-4xl">
+              {title}
+            </h1>
+            <p className="mt-1.5 max-w-2xl text-sm text-slate-500">{blurb}</p>
           </div>
-        )}
 
-        {view === 'rooms' && !activeRoom && (
-          <DaySummary
-            rooms={rooms}
-            reservations={reservations}
-            blocks={blocks}
-            schedules={schedules}
-            dayWindow={dayWindow}
-            weekday={weekday}
-            nowMinutes={nowMinutes}
-            currentUserId={user.id}
-            loading={loading}
-          />
-        )}
+          {DATED_VIEWS.includes(view) && (
+            <DayStrip date={date} onChangeDate={setDate} />
+          )}
 
-        {view === 'rooms' && !activeRoom && !loading && rooms.length > 0 && (
-          <RoomFilters
-            filters={filters}
-            onChange={setFilters}
-            matchCount={visibleRooms.length}
-            totalCount={rooms.length}
-          />
-        )}
+          {loadError && (
+            <div className="mb-5 flex items-start gap-2.5 rounded-2xl border border-rose-200/70 bg-rose-50 px-4 py-3">
+              <AlertCircle
+                className="mt-0.5 size-4 shrink-0 text-rose-600"
+                strokeWidth={2}
+              />
+              <p className="text-sm text-rose-800">
+                {loadError} — have you run{' '}
+                <code className="rounded bg-rose-100 px-1.5 py-0.5 text-xs">
+                  supabase/schema.sql
+                </code>
+                ?
+              </p>
+            </div>
+          )}
 
-        {view === 'rooms' &&
-          (activeRoom ? (
-            <RoomSchedule
-              room={activeRoom}
-              reservations={reservations}
-              blocks={blocks}
-              schedules={schedules}
-              dayWindow={dayWindow}
-              weekday={weekday}
-              dateKey={dateKey}
-              nowMinutes={nowMinutes}
-              currentUserId={user.id}
-              onBack={() => setOpenRoom(null)}
-              onReserve={openBooking}
-            />
-          ) : (
-            <RoomList
-              rooms={visibleRooms}
-              reservations={reservations}
-              blocks={blocks}
-              schedules={schedules}
-              dayWindow={dayWindow}
-              weekday={weekday}
-              nowMinutes={nowMinutes}
-              loading={loading}
-              onSelectRoom={setOpenRoom}
-            />
-          ))}
-
-        {view === 'grid' && (
-          <>
-            <TimeslotGrid
+          {view === 'rooms' && !activeRoom && (
+            <DaySummary
               rooms={rooms}
               reservations={reservations}
               blocks={blocks}
               schedules={schedules}
               dayWindow={dayWindow}
               weekday={weekday}
-              dateKey={dateKey}
               nowMinutes={nowMinutes}
-              selectedSlot={booking}
               currentUserId={user.id}
               loading={loading}
-              onSelectSlot={(slot) => openBooking(slot.room, slot.startMin)}
             />
-            <p className="mt-4 text-xs text-slate-400">
-              Times shown in your local timezone · Bookings run up to 2 hours
-            </p>
-          </>
-        )}
+          )}
 
-        {view === 'mine' && <MyReservations onCancelled={refresh} />}
+          {view === 'rooms' && !activeRoom && !loading && rooms.length > 0 && (
+            <RoomFilters
+              filters={filters}
+              onChange={setFilters}
+              matchCount={visibleRooms.length}
+              totalCount={rooms.length}
+            />
+          )}
 
-        {view === 'requests' && isAdmin && <ApprovalQueue onDecided={refresh} />}
+          {view === 'rooms' &&
+            (activeRoom ? (
+              <RoomSchedule
+                room={activeRoom}
+                reservations={reservations}
+                blocks={blocks}
+                schedules={schedules}
+                dayWindow={dayWindow}
+                weekday={weekday}
+                dateKey={dateKey}
+                nowMinutes={nowMinutes}
+                currentUserId={user.id}
+                onBack={() => setOpenRoom(null)}
+                onReserve={openBooking}
+              />
+            ) : (
+              <RoomList
+                rooms={visibleRooms}
+                reservations={reservations}
+                blocks={blocks}
+                schedules={schedules}
+                dayWindow={dayWindow}
+                weekday={weekday}
+                nowMinutes={nowMinutes}
+                loading={loading}
+                onSelectRoom={setOpenRoom}
+              />
+            ))}
 
-        {view === 'desk' && isAdmin && (
-          <DeskView dateKey={dateKey} onChanged={refresh} />
-        )}
+          {view === 'grid' && (
+            <>
+              <TimeslotGrid
+                rooms={rooms}
+                reservations={reservations}
+                blocks={blocks}
+                schedules={schedules}
+                dayWindow={dayWindow}
+                weekday={weekday}
+                dateKey={dateKey}
+                nowMinutes={nowMinutes}
+                selectedSlot={booking}
+                currentUserId={user.id}
+                loading={loading}
+                onSelectSlot={(slot) => openBooking(slot.room, slot.startMin)}
+              />
+              <p className="mt-4 text-xs text-slate-400">
+                Times shown in your local timezone · Bookings run up to 2 hours
+              </p>
+            </>
+          )}
 
-        {view === 'history' && isAdmin && <HistoryView />}
+          {view === 'mine' && <MyReservations onCancelled={refresh} />}
 
-        {view === 'settings' && <ProfileSettings />}
+          {view === 'requests' && isAdmin && <ApprovalQueue onDecided={refresh} />}
 
-        {view === 'admin' && isAdmin && (
-          <AdminPanel
-            rooms={rooms}
-            schedules={schedules}
-            blocks={blocks}
-            dateKey={dateKey}
-            onChanged={refresh}
-          />
-        )}
-      </main>
+          {view === 'desk' && isAdmin && <DeskView dateKey={dateKey} onChanged={refresh} />}
+
+          {view === 'history' && isAdmin && <HistoryView />}
+
+          {view === 'settings' && <ProfileSettings />}
+
+          {view === 'admin' && isAdmin && (
+            <AdminPanel
+              rooms={rooms}
+              schedules={schedules}
+              blocks={blocks}
+              dateKey={dateKey}
+              onChanged={refresh}
+            />
+          )}
+        </main>
+      </div>
+
+      <BottomNav view={view} onChangeView={changeView} />
 
       {/* Keyed per slot so the form resets on every open. */}
       <BookingModal
@@ -340,7 +354,7 @@ function friendlyError(error) {
 
 function FullPageSpinner() {
   return (
-    <div className="grid min-h-screen place-items-center bg-slate-50">
+    <div className="grid min-h-screen place-items-center">
       <Loader2 className="size-6 animate-spin text-brand-600" strokeWidth={2.5} />
     </div>
   )
@@ -348,14 +362,19 @@ function FullPageSpinner() {
 
 function ConfigError() {
   return (
-    <div className="grid min-h-screen place-items-center bg-slate-50 px-6">
+    <div className="grid min-h-screen place-items-center px-6">
       <div className="max-w-md text-center">
-        <span className="mx-auto grid size-11 place-items-center rounded-xl bg-amber-100 text-amber-600">
+        <span className="mx-auto grid size-11 place-items-center rounded-xl bg-amber-100 text-amber-700">
           <AlertCircle className="size-5" strokeWidth={2} />
         </span>
-        <p className="mt-4 text-sm font-semibold text-slate-900">Supabase is not configured</p>
+        <p className="mt-4 text-sm font-semibold text-slate-900">
+          Supabase is not configured
+        </p>
         <p className="mt-1 text-sm text-slate-500">
-          Set <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs">VITE_SUPABASE_URL</code>{' '}
+          Set{' '}
+          <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs">
+            VITE_SUPABASE_URL
+          </code>{' '}
           and{' '}
           <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs">
             VITE_SUPABASE_ANON_KEY

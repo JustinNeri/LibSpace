@@ -113,9 +113,9 @@ export default function AccountSetup() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-6 py-12">
-      <div className="w-full max-w-md animate-slide-up">
-        <span className="grid size-11 place-items-center rounded-xl bg-brand-600 text-white shadow-sm shadow-brand-600/25">
+    <div className="ruled-paper flex min-h-screen items-center justify-center px-5 py-10 sm:px-6">
+      <div className="surface w-full max-w-lg p-6 animate-slide-up sm:p-8">
+        <span className="grid size-11 place-items-center rounded-xl bg-slate-900 text-white">
           {isRecovery ? (
             <Lock className="size-5" strokeWidth={2} />
           ) : (
@@ -123,7 +123,7 @@ export default function AccountSetup() {
           )}
         </span>
 
-        <h1 className="mt-6 text-2xl font-semibold tracking-tight text-slate-900">
+        <h1 className="mt-5 text-2xl font-semibold text-slate-900">
           {isRecovery ? 'Set a new password' : 'Finish your account'}
         </h1>
         <p className="mt-2 text-sm text-slate-500">
@@ -162,7 +162,9 @@ export default function AccountSetup() {
                     />
                   </Field>
 
-                  <Field label="M.I.">
+                  {/* A single initial does not need a full-width box on a
+                      phone, where the grid is one column. */}
+                  <Field label="M.I." className="max-w-24 sm:max-w-none">
                     <input
                       type="text"
                       value={middleInitial}
@@ -315,7 +317,7 @@ export default function AccountSetup() {
           <button
             type="submit"
             disabled={busy}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-600/25 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-brand-700 hover:shadow-md hover:shadow-brand-600/30 active:translate-y-0 disabled:pointer-events-none disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 py-3.5 text-sm font-bold tracking-wide text-white transition-colors duration-200 hover:bg-brand-800 disabled:pointer-events-none disabled:opacity-60"
           >
             {busy ? (
               <>
@@ -347,8 +349,8 @@ export default function AccountSetup() {
 
 function Section({ title, children }) {
   return (
-    <fieldset className="rounded-xl border border-slate-200/60 bg-white p-4 shadow-sm">
-      <legend className="px-1.5 text-xs font-semibold tracking-wider text-slate-400 uppercase">
+    <fieldset className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+      <legend className="px-1.5 text-[11px] font-bold tracking-[0.14em] text-slate-500 uppercase">
         {title}
       </legend>
       {children}
@@ -366,4 +368,4 @@ function Field({ label, className = '', children }) {
 }
 
 const fieldClass =
-  'mt-1 w-full rounded-xl border border-slate-200/80 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition-all duration-200 ease-in-out placeholder:text-slate-400 hover:border-slate-300 focus:border-brand-400 focus:ring-4 focus:ring-brand-500/10 focus:outline-none'
+  'mt-1 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 transition-colors duration-200 placeholder:text-slate-400 hover:border-slate-400 focus:border-brand-600 focus:ring-2 focus:ring-brand-600/15 focus:outline-none'

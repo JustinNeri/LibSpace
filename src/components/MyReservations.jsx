@@ -95,7 +95,7 @@ export default function MyReservations({ onCancelled }) {
         {Array.from({ length: 3 }).map((_, index) => (
           <div
             key={index}
-            className="h-20 animate-pulse rounded-xl border border-slate-200/60 bg-white"
+            className="h-24 animate-pulse rounded-2xl border border-slate-200/70 bg-white"
           />
         ))}
       </div>
@@ -104,7 +104,7 @@ export default function MyReservations({ onCancelled }) {
 
   if (rows.length === 0) {
     return (
-      <div className="surface p-16 text-center">
+      <div className="surface p-10 text-center sm:p-16">
         <span className="mx-auto grid size-11 place-items-center rounded-xl bg-slate-100 text-slate-400">
           <CalendarX2 className="size-5" strokeWidth={2} />
         </span>
@@ -117,7 +117,7 @@ export default function MyReservations({ onCancelled }) {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       {error && (
         <p className="rounded-xl border border-rose-200/70 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           {error}
@@ -131,7 +131,7 @@ export default function MyReservations({ onCancelled }) {
         return (
           <div
             key={row.id}
-            className="surface surface-hover flex flex-wrap items-center gap-4 px-5 py-4"
+            className="surface surface-hover flex flex-col gap-3 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 sm:px-5"
           >
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
@@ -173,29 +173,33 @@ export default function MyReservations({ onCancelled }) {
               )}
             </div>
 
-            {row.checked_in_at && !row.checked_out_at && (
+            {/* Full-width targets on a phone; back beside the detail from
+                `sm` up, where there is room for them. */}
+            <div className="flex shrink-0 items-center gap-2">
+              {row.checked_in_at && !row.checked_out_at && (
+                <button
+                  type="button"
+                  onClick={() => release(row.id)}
+                  disabled={cancellingId === row.id}
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-2.5 text-sm font-semibold text-brand-700 transition-colors duration-200 hover:bg-brand-100 disabled:pointer-events-none disabled:opacity-50 sm:flex-none"
+                >
+                  <DoorOpen className="size-4" strokeWidth={2} />
+                  Done early
+                </button>
+              )}
+
               <button
                 type="button"
-                onClick={() => release(row.id)}
+                onClick={() => cancel(row.id)}
                 disabled={cancellingId === row.id}
-                className="inline-flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-brand-100 disabled:pointer-events-none disabled:opacity-50"
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition-colors duration-200 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 disabled:pointer-events-none disabled:opacity-50 sm:flex-none"
               >
-                <DoorOpen className="size-4" strokeWidth={2} />
-                Done early
+                {cancellingId === row.id ? (
+                  <Loader2 className="size-4 animate-spin" strokeWidth={2.5} />
+                ) : null}
+                {['rejected', 'no_show'].includes(row.status) ? 'Dismiss' : 'Cancel'}
               </button>
-            )}
-
-            <button
-              type="button"
-              onClick={() => cancel(row.id)}
-              disabled={cancellingId === row.id}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200/60 px-4 py-2 text-sm font-medium text-slate-600 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 disabled:pointer-events-none disabled:opacity-50"
-            >
-              {cancellingId === row.id ? (
-                <Loader2 className="size-4 animate-spin" strokeWidth={2.5} />
-              ) : null}
-              {['rejected', 'no_show'].includes(row.status) ? 'Dismiss' : 'Cancel'}
-            </button>
+            </div>
           </div>
         )
       })}

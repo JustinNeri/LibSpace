@@ -1,6 +1,5 @@
 import { useEffect, useMemo } from 'react'
 import {
-  ArrowLeft,
   Ban,
   CalendarDays,
   CalendarPlus,
@@ -122,20 +121,11 @@ export default function RoomSchedule({
 
   return (
     <div className="animate-slide-up">
-      <button
-        type="button"
-        onClick={onBack}
-        className="mb-5 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition-all duration-200 ease-in-out hover:-translate-x-0.5 hover:text-slate-900"
-      >
-        <ArrowLeft className="size-4" strokeWidth={2.5} />
-        All rooms
-      </button>
-
-      <div className="surface p-6">
+      <div className="surface p-4 sm:p-6">
         {/* Room identity */}
-        <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:flex-wrap">
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
+            <h2 className="font-display text-xl font-semibold text-slate-900 sm:text-2xl">
               {room.name}
             </h2>
             <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
@@ -176,7 +166,7 @@ export default function RoomSchedule({
             type="button"
             onClick={() => onReserve(room, null)}
             disabled={freeCount === 0}
-            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-brand-600/25 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-brand-700 hover:shadow-md hover:shadow-brand-600/30 active:translate-y-0 disabled:pointer-events-none disabled:opacity-50"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 py-3.5 text-sm font-bold tracking-wide text-white transition-colors duration-200 hover:bg-brand-800 disabled:pointer-events-none disabled:opacity-50 sm:w-auto"
           >
             <CalendarPlus className="size-4" strokeWidth={2.5} />
             {freeCount === 0 ? 'No time left today' : 'Reserve this room'}
@@ -229,17 +219,17 @@ function PillGroup({ icon: Icon, label, times, onPick }) {
 
   return (
     <div className="mt-5">
-      <p className="mb-2.5 inline-flex items-center gap-1.5 text-xs font-semibold tracking-wider text-slate-400 uppercase">
+      <p className="mb-2.5 inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.14em] text-slate-400 uppercase">
         <Icon className="size-3.5" strokeWidth={2} />
         {label}
       </p>
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
         {times.map((startMin) => (
           <button
             key={startMin}
             type="button"
             onClick={() => onPick(startMin)}
-            className="min-w-18 rounded-xl border border-emerald-200/80 bg-emerald-50/70 px-3.5 py-2.5 text-sm font-semibold text-emerald-800 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:border-brand-400 hover:bg-brand-600 hover:text-white hover:shadow-md hover:shadow-brand-600/25"
+            className="tnum rounded-xl border border-brand-200 bg-brand-50 px-3.5 py-3 text-sm font-bold text-brand-800 transition-colors duration-200 hover:border-brand-700 hover:bg-brand-700 hover:text-white sm:min-w-20 sm:py-2.5"
           >
             {formatClock(startMin)}
           </button>
@@ -253,7 +243,7 @@ function PillGroup({ icon: Icon, label, times, onPick }) {
 function TakenList({ taken, currentUserId }) {
   return (
     <div className="mt-6 border-t border-slate-200/60 pt-5">
-      <p className="mb-2.5 text-xs font-semibold tracking-wider text-slate-400 uppercase">
+      <p className="mb-2.5 text-[11px] font-bold tracking-[0.14em] text-slate-400 uppercase">
         Not available
       </p>
       <ul className="space-y-1.5">

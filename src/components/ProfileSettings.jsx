@@ -295,7 +295,7 @@ export default function ProfileSettings() {
 /* ---------- pieces ---------- */
 
 const fieldClass =
-  'mt-1 w-full rounded-xl border border-slate-200/80 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition-all duration-200 ease-in-out placeholder:text-slate-400 hover:border-slate-300 focus:border-brand-400 focus:ring-4 focus:ring-brand-500/10 focus:outline-none'
+  'mt-1 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition-all duration-200 ease-in-out placeholder:text-slate-400 hover:border-slate-300 focus:border-brand-600 focus:ring-2 focus:ring-brand-600/15 focus:outline-none'
 
 function Field({ label, className = '', children }) {
   return (
@@ -320,7 +320,7 @@ function SaveButton({ busy, children }) {
     <button
       type="submit"
       disabled={busy}
-      className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-brand-600/25 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-brand-700 hover:shadow-md disabled:pointer-events-none disabled:opacity-60"
+      className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 py-3 text-sm font-bold tracking-wide text-white transition-colors duration-200 hover:bg-brand-800 disabled:pointer-events-none disabled:opacity-60"
     >
       {busy && <Loader2 className="size-4 animate-spin" strokeWidth={2.5} />}
       {children}

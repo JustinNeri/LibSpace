@@ -12,9 +12,9 @@ export default function Toast({ message, onDismiss }) {
   if (!message) return null
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-6">
-      <div className="pointer-events-auto flex items-center gap-3 rounded-xl border border-slate-200/60 bg-white py-3 pr-3 pl-4 shadow-lg shadow-slate-900/5 animate-slide-up">
-        <CheckCircle2 className="size-4.5 shrink-0 text-emerald-500" strokeWidth={2} />
+    <div className="pointer-events-none mb-safe fixed inset-x-0 bottom-24 z-50 flex justify-center px-4 lg:bottom-6 lg:px-6">
+      <div className="pointer-events-auto flex max-w-md items-center gap-3 rounded-2xl border border-slate-200 bg-white py-3 pr-3 pl-4 shadow-lg shadow-slate-900/10 animate-slide-up">
+        <CheckCircle2 className="size-4.5 shrink-0 text-brand-600" strokeWidth={2} />
         <p className="text-sm font-medium text-slate-700">{message}</p>
         <button
           type="button"

@@ -66,7 +66,7 @@ export default function DaySummary({
   if (loading || rooms.length === 0) return null
 
   return (
-    <div className="mb-6 grid gap-3 sm:grid-cols-3">
+    <div className="mb-5 grid grid-cols-3 gap-2 sm:gap-3">
       <Stat
         icon={DoorOpen}
         tone="emerald"
@@ -96,18 +96,25 @@ const TONES = {
   amber: 'bg-amber-50 text-amber-600',
 }
 
+/**
+ * Stacked on a phone so three of them still fit across a 360px screen —
+ * they used to drop to one per row, pushing the room list a full screen
+ * down. From `sm` up they lie back down beside their icon.
+ */
 function Stat({ icon: Icon, tone, value, suffix = '', label }) {
   return (
-    <div className="surface flex items-center gap-3.5 px-4 py-3.5">
-      <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${TONES[tone]}`}>
-        <Icon className="size-4.5" strokeWidth={2} />
+    <div className="surface flex flex-col gap-1.5 px-3 py-3 sm:flex-row sm:items-center sm:gap-3.5 sm:px-4 sm:py-3.5">
+      <span
+        className={`grid size-8 shrink-0 place-items-center rounded-lg sm:size-10 sm:rounded-xl ${TONES[tone]}`}
+      >
+        <Icon className="size-4 sm:size-4.5" strokeWidth={2} />
       </span>
       <div className="min-w-0">
-        <p className="tnum text-xl font-bold tracking-tight text-slate-900">
+        <p className="tnum text-lg leading-none font-bold tracking-tight text-slate-900 sm:text-xl">
           {value}
-          <span className="text-sm font-medium text-slate-400">{suffix}</span>
+          <span className="text-xs font-medium text-slate-400 sm:text-sm">{suffix}</span>
         </p>
-        <p className="truncate text-xs text-slate-500">{label}</p>
+        <p className="mt-1 text-[11px] leading-tight text-slate-500 sm:text-xs">{label}</p>
       </div>
     </div>
   )

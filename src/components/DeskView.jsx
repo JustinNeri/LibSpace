@@ -181,7 +181,7 @@ export default function DeskView({ dateKey, onChanged }) {
                     type="button"
                     onClick={() => act(row, 'check_in_reservation')}
                     disabled={isBusy}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-brand-600/25 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-brand-700 hover:shadow-md disabled:pointer-events-none disabled:opacity-50"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 py-3 text-sm font-bold tracking-wide text-white transition-colors duration-200 hover:bg-brand-800 disabled:pointer-events-none disabled:opacity-60"
                   >
                     {isBusy ? (
                       <Loader2 className="size-4 animate-spin" strokeWidth={2.5} />

@@ -3,8 +3,13 @@ import { Ban, Lock, Plus, Users } from 'lucide-react'
 import { SLOT_MINUTES, buildSlots, formatTime } from '../lib/time'
 import { buildLane, freeSpanAt } from '../lib/availability'
 
-const ROOM_COL_WIDTH = 260 // px — sticky room rail
-const SLOT_MIN_WIDTH = 88 // px — keeps half-hours readable before it scrolls
+/* The sticky room rail and the slot width both shrink on small screens.
+   At the old fixed 260px + 88px a 390px phone had ~130px of grid left to
+   scroll, which was unusable; the rail is now a room name and a seat count
+   until there is room for more. Widths live in classes and a CSS custom
+   property so one media query drives both the header and every row. */
+const RAIL = 'w-[124px] shrink-0 sm:w-[190px] lg:w-[248px]'
+const SLOT_WIDTH_VARS = '[--slot-w:64px] sm:[--slot-w:78px] lg:[--slot-w:88px]'
 
 /**
  * Daily room-by-room availability grid.
@@ -36,7 +41,7 @@ export default function TimeslotGrid({
 
   const gridTemplate = useMemo(
     () => ({
-      gridTemplateColumns: `repeat(${slots.length}, minmax(${SLOT_MIN_WIDTH}px, 1fr))`,
+      gridTemplateColumns: `repeat(${slots.length}, minmax(var(--slot-w), 1fr))`,
     }),
     [slots.length],
   )
@@ -92,16 +97,15 @@ export default function TimeslotGrid({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-sm">
+    <div className="surface overflow-hidden">
       <div className="overflow-x-auto scrollbar-slim">
-        <div className="min-w-max">
+        <div className={`min-w-max ${SLOT_WIDTH_VARS}`}>
           {/* ---------- Time axis ---------- */}
           <div className="sticky top-0 z-30 flex border-b border-slate-200/60 bg-white/85 backdrop-blur-md">
             <div
-              className="sticky left-0 z-10 flex shrink-0 items-center border-r border-slate-200/60 bg-white/95 px-5 py-3 backdrop-blur-md"
-              style={{ width: ROOM_COL_WIDTH }}
+              className={`sticky left-0 z-10 flex items-center border-r border-slate-200/60 bg-white/95 px-3 py-3 backdrop-blur-md sm:px-5 ${RAIL}`}
             >
-              <span className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
+              <span className="text-[11px] font-bold tracking-[0.14em] text-slate-400 uppercase">
                 Room
               </span>
             </div>
@@ -111,7 +115,7 @@ export default function TimeslotGrid({
                 <div
                   key={slot.index}
                   className={[
-                    'py-3 pl-3 text-left',
+                    'py-3 pl-2 text-left sm:pl-3',
                     slot.isHour
                       ? 'border-l border-slate-200/60'
                       : 'border-l border-slate-100',
@@ -132,10 +136,11 @@ export default function TimeslotGrid({
           </div>
 
           {/* ---------- Room rows ---------- */}
-          {rooms.map((room) => (
+          {rooms.map((room, rowIndex) => (
             <RoomRow
               key={room.id}
               room={room}
+              isFirstRow={rowIndex === 0}
               lane={lanes.get(room.id)}
               slots={slots}
               gridTemplate={gridTemplate}
@@ -159,6 +164,7 @@ export default function TimeslotGrid({
 
 function RoomRow({
   room,
+  isFirstRow = false,
   lane,
   slots,
   gridTemplate,
@@ -190,33 +196,40 @@ function RoomRow({
     <div className="group/row flex border-b border-slate-200/60 last:border-b-0">
       {/* Sticky room rail */}
       <div
-        className="sticky left-0 z-20 flex shrink-0 flex-col justify-center border-r border-slate-200/60 bg-white px-5 py-4 transition-colors duration-200 group-hover/row:bg-slate-50/60"
-        style={{ width: ROOM_COL_WIDTH }}
+        className={`sticky left-0 z-20 flex flex-col justify-center border-r border-slate-200/60 bg-white px-3 py-3 transition-colors duration-200 group-hover/row:bg-slate-50/60 sm:px-5 sm:py-4 ${RAIL}`}
       >
-        <p className="truncate text-sm font-semibold text-slate-900">{room.name}</p>
-        <div className="mt-1.5 flex items-center gap-2">
+        <p className="line-clamp-2 text-[13px] leading-tight font-semibold text-slate-900 sm:truncate sm:text-sm">
+          {room.name}
+        </p>
+        <div className="mt-1 flex items-center gap-2 sm:mt-1.5">
           <span className="inline-flex items-center gap-1 text-xs text-slate-500">
             <Users className="size-3.5" strokeWidth={2} />
             {room.capacity}
           </span>
-          {room.equipment?.slice(0, 2).map((item) => (
-            <span
-              key={item}
-              className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500"
-            >
-              {item}
-            </span>
-          ))}
-          {room.equipment?.length > 2 && (
-            <span className="text-[11px] font-medium text-slate-400">
-              +{room.equipment.length - 2}
-            </span>
-          )}
+          {/* Equipment only once the rail is wide enough to hold it. */}
+          <span className="hidden items-center gap-2 sm:flex">
+            {room.equipment?.slice(0, 2).map((item) => (
+              <span
+                key={item}
+                className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500"
+              >
+                {item}
+              </span>
+            ))}
+            {room.equipment?.length > 2 && (
+              <span className="text-[11px] font-medium text-slate-400">
+                +{room.equipment.length - 2}
+              </span>
+            )}
+          </span>
         </div>
       </div>
 
       {/* Slot lane */}
-      <div className="relative grid h-20" style={gridTemplate}>
+      {/* min-h, not h: a two-line room name on a phone makes the rail taller
+          than the lane, and a fixed height would leave a dead strip under the
+          slots. */}
+      <div className="relative grid min-h-16 sm:min-h-20" style={gridTemplate}>
         {slots.map((slot) => {
           const entry = lane?.[slot.index]
           const edge = slot.isHour
@@ -293,7 +306,9 @@ function RoomRow({
             className="pointer-events-none absolute inset-y-0 z-20 w-px bg-rose-400/70"
             style={{ left: `${nowOffset}%` }}
           >
-            <span className="absolute -top-1 -left-[3px] size-[7px] rounded-full bg-rose-500 ring-2 ring-white" />
+            {isFirstRow && (
+              <span className="absolute -top-1 -left-[3px] size-[7px] rounded-full bg-rose-500 ring-2 ring-white" />
+            )}
           </div>
         )}
       </div>
@@ -345,7 +360,7 @@ function ReservationCard({ reservation, startIndex, span, dayWindow, isMine }) {
       style={{ gridColumn: `${startIndex + 1} / span ${span}`, gridRow: 1 }}
       title={`${reservation.student_name} · ${start} – ${end}`}
       className={[
-        'z-10 m-1 flex min-w-0 flex-col justify-center overflow-hidden rounded-xl border px-3 py-2 transition-all duration-200 ease-in-out',
+        'z-10 m-1 flex min-w-0 flex-col justify-center overflow-hidden rounded-xl border px-2 py-1.5 transition-colors duration-200 sm:px-3 sm:py-2',
         isMine
           ? 'border-brand-300/70 bg-brand-100/70 hover:border-brand-400/70 hover:bg-brand-100'
           : 'border-slate-200/70 bg-slate-100/80 hover:border-slate-300/70 hover:bg-slate-100',
@@ -361,7 +376,7 @@ function ReservationCard({ reservation, startIndex, span, dayWindow, isMine }) {
       </p>
       <p
         className={[
-          'mt-0.5 truncate text-[11px]',
+          'mt-0.5 truncate text-[10px] sm:text-[11px]',
           isMine ? 'text-brand-600' : 'text-slate-500',
         ].join(' ')}
       >
@@ -380,7 +395,7 @@ function BlockCard({ block, startIndex, span, dayWindow }) {
     <div
       style={{ gridColumn: `${startIndex + 1} / span ${span}`, gridRow: 1 }}
       title={`${block.reason} · ${start} – ${end}`}
-      className="z-10 m-1 flex min-w-0 items-center gap-2 overflow-hidden rounded-xl border border-amber-200/80 bg-amber-50 px-3 py-2"
+      className="z-10 m-1 flex min-w-0 items-center gap-2 overflow-hidden rounded-xl border border-amber-200/80 bg-amber-50 px-2 py-1.5 sm:px-3 sm:py-2"
     >
       <Ban className="size-3.5 shrink-0 text-amber-600" strokeWidth={2} />
       <div className="min-w-0">
@@ -397,7 +412,7 @@ function BlockCard({ block, startIndex, span, dayWindow }) {
 
 function EmptyState({ title, body }) {
   return (
-    <div className="rounded-2xl border border-slate-200/60 bg-white p-16 text-center shadow-sm">
+    <div className="surface p-10 text-center sm:p-16">
       <span className="mx-auto grid size-11 place-items-center rounded-xl bg-slate-100 text-slate-400">
         <Lock className="size-5" strokeWidth={2} />
       </span>
@@ -409,7 +424,7 @@ function EmptyState({ title, body }) {
 
 function GridSkeleton() {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-sm">
+    <div className="surface overflow-hidden">
       <div className="border-b border-slate-200/60 px-5 py-3.5">
         <div className="h-3 w-24 animate-pulse rounded-full bg-slate-200" />
       </div>

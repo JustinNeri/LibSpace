@@ -219,7 +219,7 @@ export default function ApprovalQueue({ onDecided }) {
                       setRejecting({ ...rejecting, reason: event.target.value })
                     }
                     placeholder="Incomplete IDs, group too small, room reserved for an event…"
-                    className="min-w-0 flex-1 rounded-xl border border-slate-200/80 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition-all duration-200 ease-in-out placeholder:text-slate-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-500/10 focus:outline-none"
+                    className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition-all duration-200 ease-in-out placeholder:text-slate-400 focus:border-brand-600 focus:ring-2 focus:ring-brand-600/15 focus:outline-none"
                   />
                   <button
                     type="button"

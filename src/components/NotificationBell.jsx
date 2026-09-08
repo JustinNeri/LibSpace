@@ -59,7 +59,7 @@ export default function NotificationBell() {
         aria-label={
           unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'
         }
-        className="relative grid size-10 place-items-center rounded-xl border border-slate-200/60 bg-white text-slate-500 shadow-sm transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:text-slate-900 hover:shadow-md"
+        className="relative grid size-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 transition-colors duration-200 hover:border-slate-300 hover:text-slate-900"
       >
         <Bell className="size-4.5" strokeWidth={2} />
         {unreadCount > 0 && (
@@ -70,7 +70,7 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-lg shadow-slate-900/5 animate-pop-in sm:w-96">
+        <div className="absolute right-0 z-50 mt-2 w-[min(21rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10 animate-pop-in sm:w-96">
           <div className="border-b border-slate-200/60 px-4 py-3">
             <p className="text-sm font-semibold text-slate-900">Notifications</p>
           </div>

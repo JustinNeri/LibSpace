@@ -56,7 +56,7 @@ export default function IdPhotoStrip({ paths }) {
               href={url}
               target="_blank"
               rel="noreferrer"
-              className="relative aspect-[4/3] overflow-hidden rounded-lg border border-slate-200/80 bg-white transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:shadow-md"
+              className="relative aspect-[4/3] overflow-hidden rounded-lg border border-slate-300 bg-white transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:shadow-md"
             >
               <img
                 src={url}

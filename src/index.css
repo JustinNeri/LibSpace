@@ -1,26 +1,66 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-    Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Body type: geometric, warm, and deliberately not the default Inter that
+     every generated interface reaches for. Display type is a variable serif
+     used only for page titles and big numbers — it gives the app the
+     library/print character the old sans-only stack was missing. */
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Fraunces", ui-serif, Georgia, "Times New Roman", serif;
 
-  /* Brand primary — indigo/violet family, used only for interactive surfaces. */
-  --color-brand-50: oklch(0.962 0.018 272.3);
-  --color-brand-100: oklch(0.93 0.034 272.8);
-  --color-brand-200: oklch(0.87 0.065 273.4);
-  --color-brand-300: oklch(0.785 0.106 274.7);
-  --color-brand-400: oklch(0.673 0.162 276.9);
-  --color-brand-500: oklch(0.585 0.203 277.1);
-  --color-brand-600: oklch(0.511 0.222 277.0);
-  --color-brand-700: oklch(0.457 0.209 277.0);
-  --color-brand-800: oklch(0.398 0.176 277.4);
-  --color-brand-900: oklch(0.359 0.144 278.7);
+  /* ------------------------------------------------------------------ ink
+     The neutral ramp is Tailwind's `slate` deliberately overridden with a
+     warm, paper-toned grey. Every `text-slate-*` / `bg-slate-*` already in
+     the codebase picks this up, so the whole app warms up at once instead
+     of the cold blue-grey it shared with every other AI-styled dashboard. */
+  --color-slate-50: oklch(0.984 0.004 85);
+  --color-slate-100: oklch(0.962 0.006 84);
+  --color-slate-200: oklch(0.922 0.008 82);
+  --color-slate-300: oklch(0.862 0.010 80);
+  --color-slate-400: oklch(0.706 0.013 75);
+  --color-slate-500: oklch(0.578 0.014 72);
+  --color-slate-600: oklch(0.472 0.015 70);
+  --color-slate-700: oklch(0.390 0.016 68);
+  --color-slate-800: oklch(0.296 0.015 66);
+  --color-slate-900: oklch(0.228 0.014 64);
+  --color-slate-950: oklch(0.158 0.012 62);
+
+  /* --------------------------------------------------------------- brand
+     Deep pine. Reads as "go / available" on the availability grid, which is
+     the one colour decision this app actually needs to make, and carries
+     the calm of a reading room rather than the violet SaaS default. */
+  --color-brand-50: oklch(0.968 0.018 165);
+  --color-brand-100: oklch(0.936 0.040 164);
+  --color-brand-200: oklch(0.882 0.070 163);
+  --color-brand-300: oklch(0.800 0.098 162);
+  --color-brand-400: oklch(0.702 0.114 162);
+  --color-brand-500: oklch(0.602 0.116 162);
+  --color-brand-600: oklch(0.512 0.108 162);
+  --color-brand-700: oklch(0.432 0.090 163);
+  --color-brand-800: oklch(0.362 0.072 164);
+  --color-brand-900: oklch(0.305 0.058 165);
+
+  /* -------------------------------------------------------------- accent
+     Warm clay, used sparingly: the primary floating action, "today", and
+     anything that should catch the eye against all that green and paper. */
+  --color-accent-50: oklch(0.968 0.024 62);
+  --color-accent-100: oklch(0.936 0.048 60);
+  --color-accent-200: oklch(0.882 0.086 58);
+  --color-accent-300: oklch(0.812 0.126 55);
+  --color-accent-400: oklch(0.746 0.158 51);
+  --color-accent-500: oklch(0.692 0.176 46);
+  --color-accent-600: oklch(0.618 0.172 42);
+  --color-accent-700: oklch(0.522 0.148 40);
+  --color-accent-800: oklch(0.438 0.118 40);
+  --color-accent-900: oklch(0.378 0.094 41);
 
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 
   --animate-fade-in: fade-in 200ms var(--ease-out-soft) both;
   --animate-pop-in: pop-in 220ms var(--ease-out-soft) both;
   --animate-slide-up: slide-up 260ms var(--ease-out-soft) both;
+  --animate-sheet-up: sheet-up 300ms var(--ease-out-soft) both;
 
   @keyframes fade-in {
     from { opacity: 0; }
@@ -34,32 +74,41 @@
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
   }
+  @keyframes sheet-up {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
 }
 
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Stops iOS bouncing the whole page behind the fixed bottom nav. */
+    overscroll-behavior-y: none;
   }
 
   body {
     @apply text-slate-900;
     background-color: var(--color-slate-50);
-    /* Two soft brand-tinted washes lift the page off flat grey without
-       competing with the content sitting on top of it. */
-    background-image:
-      radial-gradient(
-        1100px 520px at 85% -8%,
-        oklch(0.585 0.203 277.1 / 0.11),
-        transparent 62%
-      ),
-      radial-gradient(
-        820px 440px at -5% 2%,
-        oklch(0.673 0.162 276.9 / 0.08),
-        transparent 58%
-      );
+    /* One quiet warm wash, no coloured blobs. The page should read as paper
+       under a lamp, not as a gradient. */
+    background-image: radial-gradient(
+      1200px 640px at 50% -12%,
+      oklch(0.512 0.108 162 / 0.07),
+      transparent 60%
+    );
     background-attachment: fixed;
     background-repeat: no-repeat;
+  }
+
+  /* Display face only where it earns its keep. Optical size is set high so
+     headings keep the sharp, printed look rather than the soft text cut. */
+  h1,
+  .font-display {
+    font-family: var(--font-display);
+    font-variation-settings: "SOFT" 0, "WONK" 0, "opsz" 40;
+    letter-spacing: -0.015em;
   }
 
   /* Times and counts line up in columns when digits share a width. */
@@ -70,28 +119,65 @@
 
   /* Focus rings that match the brand rather than the browser default. */
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-brand-500;
+    @apply outline-2 outline-offset-2 outline-brand-600;
+  }
+
+  /* Comfortable tap targets on touch screens without bloating the desktop
+     layout — pointer:coarse only matches phones and tablets. */
+  @media (pointer: coarse) {
+    button,
+    [role="button"],
+    a {
+      -webkit-tap-highlight-color: transparent;
+    }
   }
 }
 
 @layer components {
-  /* The standard raised surface. Two stacked shadows read as depth rather
-     than the single flat drop shadow used everywhere before. */
+  /* The standard raised surface: solid paper with a hairline warm border.
+     No backdrop blur — glassmorphism was doing nothing here but softening
+     text over a background that is already plain. */
   .surface {
-    @apply rounded-2xl border border-white/70 bg-white/85 backdrop-blur-xl;
+    @apply rounded-2xl border border-slate-200/80 bg-white;
     box-shadow:
-      0 1px 2px oklch(0.21 0.03 265 / 0.04),
-      0 8px 24px -12px oklch(0.21 0.03 265 / 0.12);
+      0 1px 2px oklch(0.228 0.014 64 / 0.04),
+      0 8px 20px -14px oklch(0.228 0.014 64 / 0.16);
   }
 
   .surface-hover {
     @apply transition-all duration-200 ease-in-out;
   }
   .surface-hover:hover {
-    @apply -translate-y-0.5 border-brand-200;
+    @apply border-brand-300;
     box-shadow:
-      0 1px 2px oklch(0.21 0.03 265 / 0.05),
-      0 16px 32px -14px oklch(0.511 0.222 277 / 0.28);
+      0 1px 2px oklch(0.228 0.014 64 / 0.05),
+      0 14px 28px -16px oklch(0.362 0.072 164 / 0.32);
+  }
+  @media (hover: hover) {
+    .surface-hover:hover {
+      @apply -translate-y-0.5;
+    }
+  }
+
+  /* Ruled paper, used behind the sign-in screen. The rules sit far enough
+     apart to register as a logbook page without becoming a texture. */
+  .ruled-paper {
+    background-color: var(--color-slate-50);
+    background-image:
+      linear-gradient(
+        to bottom,
+        transparent 31px,
+        oklch(0.472 0.015 70 / 0.07) 31px,
+        oklch(0.472 0.015 70 / 0.07) 32px
+      );
+    background-size: 100% 32px;
+  }
+
+  /* The rubber-stamp mark on the sign-in card. */
+  .stamp {
+    @apply rounded-md border-2 px-2.5 py-1 text-[10px] font-bold tracking-[0.18em] uppercase;
+    border-color: oklch(0.618 0.172 42 / 0.5);
+    color: oklch(0.522 0.148 40 / 0.85);
   }
 }
 
@@ -116,5 +202,35 @@
   }
   .scrollbar-slim::-webkit-scrollbar-thumb:hover {
     background-color: var(--color-slate-400);
+  }
+
+  /* Chip and date rows that scroll sideways on a phone should not show a
+     bar doing it. */
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Bleed a scrolling row to the screen edge inside a padded container, so
+     the last chip runs off the edge instead of stopping short of it. */
+  .edge-bleed {
+    margin-inline: calc(var(--spacing) * -4);
+    padding-inline: calc(var(--spacing) * 4);
+  }
+  @media (min-width: 1024px) {
+    .edge-bleed {
+      margin-inline: 0;
+      padding-inline: 0;
+    }
+  }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom, 0px);
   }
 }

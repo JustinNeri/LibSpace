@@ -10,7 +10,7 @@ const EQUIPMENT_ICONS = {
 }
 
 const SEGMENT_STYLES = {
-  free: 'bg-emerald-400',
+  free: 'bg-brand-500',
   pending: 'bg-slate-300',
   booked: 'bg-slate-300',
   blocked: 'bg-amber-300',
@@ -85,9 +85,9 @@ export default function RoomList({
 
   if (loading) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
         {Array.from({ length: 6 }).map((_, index) => (
-          <div key={index} className="surface h-48 animate-pulse" />
+          <div key={index} className="surface h-44 animate-pulse" />
         ))}
       </div>
     )
@@ -95,8 +95,8 @@ export default function RoomList({
 
   if (rooms.length === 0) {
     return (
-      <div className="surface p-16 text-center">
-        <p className="text-sm font-medium text-slate-900">No discussion rooms yet</p>
+      <div className="surface p-10 text-center sm:p-16">
+        <p className="text-sm font-semibold text-slate-900">No discussion rooms yet</p>
         <p className="mt-1 text-sm text-slate-500">
           An administrator needs to add rooms before anything can be booked.
         </p>
@@ -105,7 +105,7 @@ export default function RoomList({
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
       {rooms.map((room) => {
         const summary = summaries.get(room.id)
         if (!summary) return null
@@ -119,12 +119,12 @@ export default function RoomList({
             onClick={() => onSelectRoom(room)}
             disabled={summary.closed}
             aria-label={`${room.name}, ${summary.free} slots free`}
-            className="surface surface-hover group relative overflow-hidden p-5 text-left disabled:pointer-events-none disabled:opacity-55"
+            className="surface surface-hover group relative overflow-hidden p-4 text-left disabled:pointer-events-none disabled:opacity-55 sm:p-5"
           >
             {/* Brand wash that warms on hover */}
             <span
               aria-hidden
-              className="pointer-events-none absolute -top-16 -right-16 size-40 rounded-full bg-brand-500/8 blur-2xl transition-all duration-300 ease-in-out group-hover:bg-brand-500/16"
+              className="pointer-events-none absolute -top-16 -right-16 size-40 rounded-full bg-brand-500/6 blur-2xl transition-colors duration-300 group-hover:bg-brand-500/14"
             />
 
             <div className="relative flex items-start gap-3.5">
@@ -134,7 +134,7 @@ export default function RoomList({
                   'tnum grid size-12 shrink-0 place-items-center rounded-xl text-base font-bold transition-colors duration-200',
                   unavailable
                     ? 'bg-slate-100 text-slate-400'
-                    : 'bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-sm shadow-brand-600/30',
+                    : 'bg-brand-700 text-white',
                 ].join(' ')}
               >
                 {roomNumber(room.name)}
@@ -146,8 +146,8 @@ export default function RoomList({
                     {room.name}
                   </p>
                   {summary.freeNow && (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold tracking-wide text-emerald-700 uppercase">
-                      <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-bold tracking-wide text-brand-700 uppercase">
+                      <span className="size-1.5 animate-pulse rounded-full bg-brand-500" />
                       Now
                     </span>
                   )}
@@ -171,7 +171,7 @@ export default function RoomList({
                   <span
                     key={index}
                     title={`${formatTime(slots[index].startMin)} · ${cell.state}`}
-                    className={`h-2 flex-1 rounded-full ${SEGMENT_STYLES[cell.state]}`}
+                    className={`h-2.5 flex-1 rounded-full ${SEGMENT_STYLES[cell.state]}`}
                   />
                 ))}
               </div>

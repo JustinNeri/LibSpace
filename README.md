@@ -106,9 +106,12 @@ src/
 ├── components/
 │   ├── AuthGate.jsx            login · register · forgot password
 │   ├── AccountSetup.jsx        name, student no., year, course + password
-│   ├── AppHeader.jsx           day nav, view switch, account menu
+│   ├── SideNav.jsx             desktop navigation rail (lg and up)
+│   ├── BottomNav.jsx           phone tab bar + "More" sheet (below lg)
+│   ├── AppHeader.jsx           greeting + notifications
+│   ├── DayStrip.jsx            week-at-a-time day picker
 │   ├── TimeslotGrid.jsx        rooms × half-hour grid
-│   ├── BookingModal.jsx        controlled booking form
+│   ├── BookingModal.jsx        booking form — bottom sheet on a phone
 │   ├── MyReservations.jsx      student's bookings, or all of them for admins
 │   ├── AdminPanel.jsx          rooms · opening hours · blocked time
 │   └── Toast.jsx
@@ -118,9 +121,24 @@ src/
 └── lib/
     ├── supabaseClient.js
     ├── time.js                 slot maths — single source of truth for the day
+    ├── nav.js                  the view list both navs render, + page copy
     ├── constants.js            university name, year levels, course list
     └── validation.js
 ```
+
+## Design
+
+One rail, one tab bar. Every view is declared once in
+[`src/lib/nav.js`](src/lib/nav.js); `SideNav` renders it as a left rail from
+`lg` up and `BottomNav` renders the first four entries as phone tabs with the
+rest behind a sheet, so a view can never appear in one and go missing in the
+other.
+
+The palette lives in [`src/index.css`](src/index.css). Tailwind's `slate` ramp
+is overridden with a warm paper-toned grey and `brand` is a deep pine, so the
+existing `text-slate-*` / `bg-brand-*` classes carry the theme without every
+component naming its own colours. `accent` (warm clay) is for the few things
+that must catch the eye — "today", and nothing else by default.
 
 ## Notes
 

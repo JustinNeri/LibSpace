@@ -163,16 +163,23 @@ export default function BookingModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="booking-modal-title"
-        className="relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white shadow-2xl ring-1 ring-slate-900/5 animate-pop-in sm:rounded-2xl"
+        className="relative flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl ring-1 ring-slate-900/5 animate-sheet-up sm:max-h-[88vh] sm:rounded-2xl sm:animate-pop-in"
       >
-        <header className="flex items-start justify-between gap-4 border-b border-slate-200/60 px-6 py-5">
+        {/* Grab handle - the sheet reads as draggable even though tapping
+            the backdrop is what closes it. */}
+        <span
+          aria-hidden
+          className="mx-auto mt-2.5 block h-1 w-10 shrink-0 rounded-full bg-slate-200 sm:hidden"
+        />
+
+        <header className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200/60 px-5 py-4 sm:px-6 sm:py-5">
           <div className="min-w-0">
-            <p className="text-xs font-semibold tracking-wider text-brand-600 uppercase">
+            <p className="text-[11px] font-bold tracking-[0.14em] text-brand-700 uppercase">
               {asAdmin ? 'Walk-in · confirmed on save' : 'New reservation'}
             </p>
             <h2
               id="booking-modal-title"
-              className="mt-1 truncate text-lg font-semibold text-slate-900"
+              className="font-display mt-1 truncate text-lg font-semibold text-slate-900"
             >
               {room.name}
             </h2>
@@ -201,10 +208,10 @@ export default function BookingModal({
           </button>
         </header>
 
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-5 px-6 py-5">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5 scrollbar-slim sm:px-6">
             {/* When */}
-            <div className="rounded-xl border border-slate-200/60 bg-slate-50/60 p-4">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
               <div className="mb-3 flex items-center gap-2">
                 <Clock className="size-4 text-slate-400" strokeWidth={2} />
                 <p className="text-sm font-semibold text-slate-900">
@@ -246,10 +253,10 @@ export default function BookingModal({
                             type="button"
                             onClick={() => setSpanSlots(count)}
                             className={[
-                              'rounded-lg px-3.5 py-2 text-sm font-medium transition-all duration-200 ease-in-out',
+                              'flex-1 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-colors duration-200 sm:flex-none',
                               active
-                                ? 'bg-brand-600 text-white shadow-sm shadow-brand-600/25'
-                                : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:-translate-y-0.5 hover:bg-slate-100 hover:text-slate-900',
+                                ? 'bg-brand-700 text-white'
+                                : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-900',
                             ].join(' ')}
                           >
                             {label}
@@ -266,7 +273,7 @@ export default function BookingModal({
                   </Field>
 
                   {endMin !== null && (
-                    <div className="mt-3 flex items-center gap-3 rounded-lg border border-brand-200/70 bg-white px-3.5 py-2.5">
+                    <div className="mt-3 flex items-center gap-3 rounded-xl border border-brand-200 bg-white px-3.5 py-3">
                       <CalendarClock
                         className="size-4 shrink-0 text-brand-600"
                         strokeWidth={2}
@@ -354,35 +361,37 @@ export default function BookingModal({
             )}
           </div>
 
-          <footer className="flex items-center justify-end gap-3 border-t border-slate-200/60 bg-slate-50/70 px-6 py-4">
+          <footer className="pb-safe shrink-0 border-t border-slate-200/60 bg-slate-50/70 px-5 py-4 sm:px-6">
             {saving && progress && (
-              <span className="mr-auto text-xs font-medium text-slate-500">{progress}</span>
+              <p className="mb-3 text-xs font-medium text-slate-500">{progress}</p>
             )}
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={saving}
-              className="rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 transition-all duration-200 ease-in-out hover:bg-slate-200/70 hover:text-slate-900 disabled:opacity-40"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving || startOptions.length === 0}
-              className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-brand-600/25 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-brand-700 hover:shadow-md hover:shadow-brand-600/30 active:translate-y-0 disabled:pointer-events-none disabled:opacity-60"
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" strokeWidth={2.5} />
-                  Reserving…
-                </>
-              ) : (
-                <>
-                  <Check className="size-4" strokeWidth={2.5} />
-                  {asAdmin ? 'Log walk-in' : 'Confirm booking'}
-                </>
-              )}
-            </button>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={saving}
+                className="rounded-xl px-4 py-3 text-sm font-semibold text-slate-600 transition-colors duration-200 hover:bg-slate-200/70 hover:text-slate-900 disabled:opacity-40 sm:py-2.5"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving || startOptions.length === 0}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 py-3.5 text-sm font-bold tracking-wide text-white transition-colors duration-200 hover:bg-brand-800 disabled:pointer-events-none disabled:opacity-60 sm:py-2.5"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" strokeWidth={2.5} />
+                    Reserving…
+                  </>
+                ) : (
+                  <>
+                    <Check className="size-4" strokeWidth={2.5} />
+                    {asAdmin ? 'Log walk-in' : 'Confirm booking'}
+                  </>
+                )}
+              </button>
+            </div>
           </footer>
         </form>
       </div>
@@ -407,11 +416,11 @@ function Field({ label, hint, error, className = '', children }) {
 
 function inputClass(hasError) {
   return [
-    'w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm',
-    'placeholder:text-slate-400 transition-all duration-200 ease-in-out',
-    'focus:outline-none focus:ring-4',
+    'w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-slate-900',
+    'placeholder:text-slate-400 transition-colors duration-200',
+    'focus:outline-none focus:ring-2',
     hasError
-      ? 'border-rose-300 focus:border-rose-400 focus:ring-rose-500/10'
-      : 'border-slate-200/80 hover:border-slate-300 focus:border-brand-400 focus:ring-brand-500/10',
+      ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500/15'
+      : 'border-slate-300 hover:border-slate-400 focus:border-brand-600 focus:ring-brand-600/15',
   ].join(' ')
 }

@@ -82,7 +82,7 @@ export default function IdPhotoUpload({
         {previews.map((url, index) => (
           <div
             key={url}
-            className="relative aspect-[4/3] overflow-hidden rounded-lg border border-slate-200/80 bg-slate-100"
+            className="relative aspect-[4/3] overflow-hidden rounded-lg border border-slate-300 bg-slate-100"
           >
             <img
               src={url}
