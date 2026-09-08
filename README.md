@@ -1,10 +1,32 @@
 # LibSpace
 
+**Live at [libspace-flax.vercel.app](https://libspace-flax.vercel.app)**
+
 Replaces the physical logbook at the **Holy Angel University** library by
 letting students check real-time discussion-room availability and reserve one
 of the 10 discussion rooms remotely.
 
 **Stack** — React 19 (Vite) · Tailwind CSS v4 · Supabase (Postgres + Auth + Realtime) · Vercel
+
+---
+
+## Using it
+
+Open [libspace-flax.vercel.app](https://libspace-flax.vercel.app) on a phone or
+a desktop — it is the same app either way, no install.
+
+**Students** register with a `@gmail.com` address. Registration emails a
+six-digit code; once that is verified you set your own password and fill in
+your name, student number, year and course. After that it is email + password.
+
+**Staff** sign in the same way. An account becomes staff only when someone runs
+the SQL at the bottom of [`supabase/schema.sql`](supabase/schema.sql) against
+it, so signing up cannot make you an administrator.
+
+A booking needs a group of at least five and one photo of each member's student
+ID. Requests reach the front desk as *pending*; staff approve or decline them
+and the student is notified in the app. Turn up and get checked in at the desk —
+a room nobody claims within the grace period goes back to other students.
 
 ---
 
@@ -118,10 +140,13 @@ this, add your own SMTP provider under **Authentication → SMTP Settings**.
 
 ## Deploying
 
-Push to GitHub, import the repo on Vercel, and add `VITE_SUPABASE_URL` and
-`VITE_SUPABASE_ANON_KEY` as **Config** (not Secret) environment variables for
-all three environments. [`vercel.json`](vercel.json) already rewrites every path
-to `index.html` for client-side routing.
+The live deployment is [libspace-flax.vercel.app](https://libspace-flax.vercel.app),
+built from `main` on every push.
+
+To stand up your own: push to GitHub, import the repo on Vercel, and add
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as **Config** (not Secret)
+environment variables for all three environments. [`vercel.json`](vercel.json)
+already rewrites every path to `index.html` for client-side routing.
 
 `VITE_`-prefixed variables are compiled into the bundle at build time, so adding
 or changing one requires a redeploy.
