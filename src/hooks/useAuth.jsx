@@ -59,12 +59,25 @@ export function AuthProvider({ children }) {
     return data
   }, [])
 
+  /**
+   * Keyed on the user's id, deliberately — not on the session object.
+   *
+   * Supabase refreshes the token whenever the tab regains focus and fires
+   * `onAuthStateChange` with a fresh session object every time. Depending on
+   * that object meant this effect re-ran on every alt-tab, flipped `loading`
+   * back to true, and `Routes` swapped the whole workspace for the spinner —
+   * unmounting it and throwing away which view you were on, the day you were
+   * looking at and any filters. The id only changes when the user actually
+   * changes, which is the only time the profile needs fetching again.
+   */
+  const userId = session?.user?.id ?? null
+
   useEffect(() => {
     let cancelled = false
-    if (!session?.user) return
+    if (!userId) return
 
     setLoading(true)
-    loadProfile(session.user.id).then((row) => {
+    loadProfile(userId).then((row) => {
       if (cancelled) return
       setProfile(row)
       setLoading(false)
@@ -73,7 +86,7 @@ export function AuthProvider({ children }) {
     return () => {
       cancelled = true
     }
-  }, [session, loadProfile])
+  }, [userId, loadProfile])
 
   /* ---------------- sign in ---------------- */
 
