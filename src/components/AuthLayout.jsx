@@ -135,8 +135,8 @@ export function SectionHeading({ children }) {
   )
 }
 
-export const authField =
-  'w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 transition-colors duration-200 placeholder:text-slate-400 hover:border-slate-400 focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20 focus:outline-none'
+/** Defined as `.field` in index.css so app screens share it. */
+export const authField = 'field'
 
 export function AuthButton({ busy, busyLabel = 'Working…', children }) {
   return (
