@@ -37,6 +37,7 @@ export default function RoomList({
   weekday,
   nowMinutes = null,
   graceMinutes = 0,
+  dayClosedReason = null,
   loading = false,
   onSelectRoom,
 }) {
@@ -59,8 +60,9 @@ export default function RoomList({
         dayWindow,
         nowMinutes,
         graceMinutes,
+        dayClosedReason,
       })
-      const summary = summarise(lane, { slots, nowMinutes })
+      const summary = summarise(lane, { slots, nowMinutes, dayClosedReason })
 
       // "Free now" needs the block containing the current minute, not just
       // any free block later in the day.
@@ -93,6 +95,7 @@ export default function RoomList({
     dayWindow,
     nowMinutes,
     graceMinutes,
+    dayClosedReason,
   ])
 
   if (loading) {
@@ -193,7 +196,11 @@ export default function RoomList({
                   <span className="text-sm font-medium text-slate-400">Closed today</span>
                 ) : summary.dayOver ? (
                   <span className="text-sm font-medium text-slate-500">
-                    Closed · reopens tomorrow
+                    {summary.closedReason === 'past'
+                      ? 'Closed · date has passed'
+                      : summary.closedReason === 'too-far'
+                        ? 'Not open for booking yet'
+                        : 'Closed · reopens tomorrow'}
                   </span>
                 ) : summary.fullyBooked ? (
                   <span className="text-sm font-medium text-slate-500">Fully booked</span>

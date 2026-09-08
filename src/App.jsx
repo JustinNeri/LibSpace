@@ -27,6 +27,7 @@ import { isSupabaseConfigured } from './lib/supabaseClient'
 import { DATED_VIEWS, viewCopy } from './lib/nav'
 import {
   SLOT_MINUTES,
+  addDays,
   buildSlots,
   formatTime,
   isSameDay,
@@ -97,6 +98,26 @@ function Workspace() {
 
   const nowMinutes = isSameDay(date, now) ? minutesFromDate(now) : null
 
+  /**
+   * Why this date cannot be booked at all, or null when it can.
+   *
+   * Both ends are the same bug in opposite directions: `nowMinutes` is null
+   * for every day that is not today, so a date in the past looked completely
+   * free, and a date past the library's booking horizon offered slots that
+   * enforce_booking_limits() then refused. Staff are exempt from the horizon,
+   * exactly as the database trigger is.
+   */
+  const dayClosedReason = useMemo(() => {
+    const todayKey = toDateKey(now)
+    if (dateKey < todayKey) return 'past'
+
+    const advanceDays = rules?.advance_days
+    if (!isAdmin && advanceDays) {
+      if (dateKey > toDateKey(addDays(now, advanceDays))) return 'too-far'
+    }
+    return null
+  }, [dateKey, now, rules, isAdmin])
+
   // Re-resolve the open room against fresh data so an admin edit shows up.
   const activeRoom = openRoom ? (rooms.find((r) => r.id === openRoom.id) ?? null) : null
 
@@ -119,6 +140,7 @@ function Workspace() {
       dayWindow,
       nowMinutes,
       graceMinutes,
+      dayClosedReason,
     })
     return freeStarts(lane, slots)
   }, [
@@ -130,6 +152,7 @@ function Workspace() {
     dayWindow,
     nowMinutes,
     graceMinutes,
+    dayClosedReason,
   ])
 
   const openBooking = useCallback(
@@ -244,6 +267,7 @@ function Workspace() {
               weekday={weekday}
               nowMinutes={nowMinutes}
               graceMinutes={graceMinutes}
+              dayClosedReason={dayClosedReason}
               currentUserId={user.id}
               loading={loading}
             />
@@ -270,6 +294,7 @@ function Workspace() {
                 dateKey={dateKey}
                 nowMinutes={nowMinutes}
                 graceMinutes={graceMinutes}
+                dayClosedReason={dayClosedReason}
                 currentUserId={user.id}
                 onBack={() => setOpenRoom(null)}
                 onReserve={openBooking}
@@ -284,6 +309,7 @@ function Workspace() {
                 weekday={weekday}
                 nowMinutes={nowMinutes}
                 graceMinutes={graceMinutes}
+                dayClosedReason={dayClosedReason}
                 loading={loading}
                 onSelectRoom={setOpenRoom}
               />
@@ -301,6 +327,7 @@ function Workspace() {
                 dateKey={dateKey}
                 nowMinutes={nowMinutes}
                 graceMinutes={graceMinutes}
+                dayClosedReason={dayClosedReason}
                 selectedSlot={booking}
                 currentUserId={user.id}
                 loading={loading}

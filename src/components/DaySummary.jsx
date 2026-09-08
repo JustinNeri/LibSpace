@@ -16,6 +16,7 @@ export default function DaySummary({
   weekday,
   nowMinutes = null,
   graceMinutes = 0,
+  dayClosedReason = null,
   currentUserId = null,
   loading = false,
 }) {
@@ -42,8 +43,9 @@ export default function DaySummary({
         dayWindow,
         nowMinutes,
         graceMinutes,
+        dayClosedReason,
       })
-      freeSlots += summarise(lane, { slots, nowMinutes }).free
+      freeSlots += summarise(lane, { slots, nowMinutes, dayClosedReason }).free
       if (currentIndex !== -1 && lane[currentIndex]?.state === 'free') freeNow += 1
     }
 
@@ -72,31 +74,46 @@ export default function DaySummary({
     weekday,
     nowMinutes,
     graceMinutes,
+    dayClosedReason,
     currentUserId,
   ])
 
   if (loading || rooms.length === 0) return null
 
+  const shut = dayClosedReason !== null
+
   return (
     <div className="mb-5 grid grid-cols-3 gap-2 sm:gap-3">
       <Stat
-        icon={stats.offHours ? Moon : DoorOpen}
-        tone={stats.offHours ? 'slate' : 'emerald'}
-        value={nowMinutes === null || stats.offHours ? '—' : stats.freeNow}
-        suffix={nowMinutes === null || stats.offHours ? '' : ` of ${stats.roomCount}`}
+        icon={shut || stats.offHours ? Moon : DoorOpen}
+        tone={shut || stats.offHours ? 'slate' : 'emerald'}
+        value={shut || nowMinutes === null || stats.offHours ? '—' : stats.freeNow}
+        suffix={
+          shut || nowMinutes === null || stats.offHours ? '' : ` of ${stats.roomCount}`
+        }
         label={
-          nowMinutes === null
-            ? 'Not today'
-            : stats.offHours
-              ? 'Library closed now'
-              : 'Free right now'
+          dayClosedReason === 'past'
+            ? 'Past date'
+            : dayClosedReason === 'too-far'
+              ? 'Not open yet'
+              : nowMinutes === null
+                ? 'Not today'
+                : stats.offHours
+                  ? 'Library closed now'
+                  : 'Free right now'
         }
       />
       <Stat
         icon={CalendarCheck}
-        tone="brand"
-        value={stats.freeSlots}
-        label={stats.freeSlots === 0 ? 'No slots left today' : 'Open half-hour slots'}
+        tone={shut ? 'slate' : 'brand'}
+        value={shut ? '—' : stats.freeSlots}
+        label={
+          shut
+            ? 'Booking closed'
+            : stats.freeSlots === 0
+              ? 'No slots left today'
+              : 'Open half-hour slots'
+        }
       />
       <Stat
         icon={Hourglass}

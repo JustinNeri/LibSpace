@@ -49,6 +49,7 @@ export default function RoomSchedule({
   dateKey,
   nowMinutes = null,
   graceMinutes = 0,
+  dayClosedReason = null,
   currentUserId = null,
   onBack,
   onReserve,
@@ -84,6 +85,7 @@ export default function RoomSchedule({
         dayWindow,
         nowMinutes,
         graceMinutes,
+        dayClosedReason,
       }),
     [
       room,
@@ -95,11 +97,15 @@ export default function RoomSchedule({
       dayWindow,
       nowMinutes,
       graceMinutes,
+      dayClosedReason,
     ],
   )
 
-  // Past closing there is nothing left to offer, however the slots read.
-  const dayOver = closes !== null && nowMinutes !== null && nowMinutes >= closes
+  // Nothing left to offer: the evening came, the date has gone, or booking
+  // has not opened this far ahead yet.
+  const dayOver =
+    dayClosedReason !== null ||
+    (closes !== null && nowMinutes !== null && nowMinutes >= closes)
 
   /** Free starts split by half of the day, plus merged unavailable ranges. */
   const { morning, afternoon, taken, freeCount } = useMemo(() => {
@@ -185,11 +191,15 @@ export default function RoomSchedule({
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 py-3.5 text-sm font-bold tracking-wide text-white transition-colors duration-200 hover:bg-brand-800 disabled:pointer-events-none disabled:opacity-50 sm:w-auto"
           >
             <CalendarPlus className="size-4" strokeWidth={2.5} />
-            {dayOver
-              ? 'Closed for today'
-              : freeCount === 0
-                ? 'No time left today'
-                : 'Reserve this room'}
+            {dayClosedReason === 'past'
+              ? 'Date has passed'
+              : dayClosedReason === 'too-far'
+                ? 'Not open for booking yet'
+                : dayOver
+                  ? 'Closed for today'
+                  : freeCount === 0
+                    ? 'No time left today'
+                    : 'Reserve this room'}
           </button>
         </div>
 
@@ -199,6 +209,7 @@ export default function RoomSchedule({
           ) : dayOver ? (
             <ClosedForToday
               closes={closes}
+              reason={dayClosedReason}
               taken={taken}
               currentUserId={currentUserId}
             />
@@ -336,20 +347,30 @@ function FullyBooked({ taken, currentUserId }) {
   )
 }
 
-/** The room was open today, but that is over. */
-function ClosedForToday({ closes, taken, currentUserId }) {
+/** Booking is shut for this date — the evening came, or the date itself. */
+function ClosedForToday({ closes, reason, taken, currentUserId }) {
+  const title =
+    reason === 'past'
+      ? 'This date has passed'
+      : reason === 'too-far'
+        ? 'Booking is not open yet'
+        : 'Closed for today'
+
+  const body =
+    reason === 'past'
+      ? 'You can look at what was booked, but only today and later can be reserved.'
+      : reason === 'too-far'
+        ? 'The library opens booking closer to the date. Pick an earlier one.'
+        : `This room closed at ${formatTime(closes)}. Pick tomorrow to book it.`
+
   return (
     <div>
       <div className="py-6 text-center">
         <span className="mx-auto grid size-11 place-items-center rounded-xl bg-slate-100 text-slate-400">
           <Moon className="size-5" strokeWidth={2} />
         </span>
-        <p className="mt-4 text-sm font-semibold text-slate-900">
-          Closed for today
-        </p>
-        <p className="mt-1 text-sm text-slate-500">
-          This room closed at {formatTime(closes)}. Pick tomorrow to book it.
-        </p>
+        <p className="mt-4 text-sm font-semibold text-slate-900">{title}</p>
+        <p className="mt-1 text-sm text-slate-500">{body}</p>
       </div>
       {taken.length > 0 && <TakenList taken={taken} currentUserId={currentUserId} />}
     </div>

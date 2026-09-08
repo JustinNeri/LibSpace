@@ -27,6 +27,7 @@ export function buildLane({
   dayWindow,
   nowMinutes = null,
   graceMinutes = 0,
+  dayClosedReason = null,
 }) {
   const schedule = schedules.find(
     (row) => row.room_id === room.id && row.weekday === weekday,
@@ -38,6 +39,11 @@ export function buildLane({
     if (!schedule || slot.startMin < opens || slot.endMin > closes) {
       return { state: 'closed' }
     }
+    // A day nobody can book into has no free slots, whatever the clock says:
+    // `nowMinutes` is null for any day that is not today, so without this a
+    // date in the past reads as wide open.
+    if (dayClosedReason !== null) return { state: 'past' }
+
     // A slot stops being bookable once the grace period into it has gone.
     // release_no_shows() sweeps any approved booking whose start is more than
     // `no_show_grace_minutes` old with nobody checked in, so offering a start
@@ -133,10 +139,15 @@ export function startOptions(lane, slots) {
  * "No free slots" has three quite different causes and the caller has to be
  * able to tell them apart:
  *   closed       the room has no hours on this weekday at all
- *   dayOver      it has closed for the evening — nothing left to say yes to
+ *   dayOver      booking is shut: the evening came, the date has passed, or
+ *                it is further ahead than the library opens booking for
+ *                (`closedReason` says which)
  *   fullyBooked  it is open, and every remaining slot is taken
  */
-export function summarise(lane, { slots = null, nowMinutes = null } = {}) {
+export function summarise(
+  lane,
+  { slots = null, nowMinutes = null, dayClosedReason = null } = {},
+) {
   const free = lane.filter((cell) => cell.state === 'free').length
   const openTotal = lane.filter((cell) => cell.state !== 'closed').length
   const firstFree = lane.findIndex((cell) => cell.state === 'free')
@@ -160,7 +171,9 @@ export function summarise(lane, { slots = null, nowMinutes = null } = {}) {
     closesMin = slots[lastOpen].endMin
   }
 
-  const dayOver = closesMin !== null && nowMinutes !== null && nowMinutes >= closesMin
+  const dayOver =
+    dayClosedReason !== null ||
+    (closesMin !== null && nowMinutes !== null && nowMinutes >= closesMin)
   const notYetOpen = opensMin !== null && nowMinutes !== null && nowMinutes < opensMin
 
   return {
@@ -170,6 +183,8 @@ export function summarise(lane, { slots = null, nowMinutes = null } = {}) {
     closesMin,
     closed,
     dayOver,
+    // Why booking is shut: 'past', 'too-far', or null for "the evening came".
+    closedReason: dayClosedReason,
     notYetOpen,
     fullyBooked: !closed && !dayOver && free === 0,
     firstFreeIndex: firstFree === -1 ? null : firstFree,
