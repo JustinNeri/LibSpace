@@ -11,10 +11,14 @@ import { UNIVERSITY_SHORT } from '../lib/constants'
  * The greeting has moved too, down onto the rooms screen itself, where a
  * phone can see it as well — so this bar is left holding the brand and the
  * one thing that needs your attention.
+ *
+ * White rather than the page's own green: the ground is dark enough now that
+ * a bar tinted to match it would simply disappear, and this way the top bar,
+ * the phone's tab bar and the desktop rail are all the same white surface.
  */
 export default function AppHeader() {
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-paper/85 backdrop-blur-lg">
+    <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/90 backdrop-blur-lg">
       <div className="mx-auto flex max-w-[1200px] items-center gap-3 px-4 py-3 sm:px-6 lg:py-5">
         {/* Phones get the brand mark — there is no rail to carry it. */}
         <div className="flex items-center gap-2.5 lg:hidden">

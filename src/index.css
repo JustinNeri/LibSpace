@@ -66,8 +66,13 @@
      it has to clear two colours at once — white, so cards lift off it, and
      `brand-50`, which is the app's "available / confirmed / active" fill and
      must keep reading as a signal rather than as more background. Sitting a
-     step darker than brand-50 is what buys that separation. */
-  --color-paper: oklch(0.880 0.040 160);
+     step darker than brand-50 is what buys that separation.
+
+     Going darker than this starts costing text: at this value only
+     `slate-700` and darker clear 4.5:1 on it, which is why secondary copy
+     sitting straight on the page uses 700 rather than the 500 it uses
+     inside a white card. */
+  --color-paper: oklch(0.830 0.050 160);
 
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 
