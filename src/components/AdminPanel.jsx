@@ -402,7 +402,7 @@ function ScheduleTab({ rooms, schedules, onChanged }) {
           Save opening hours
         </PrimaryButton>
         {saved && !busy && (
-          <span className="text-xs font-medium text-emerald-600">Saved</span>
+          <span className="text-xs font-medium text-brand-700">Saved</span>
         )}
       </div>
     </div>
@@ -676,7 +676,7 @@ function RulesTab() {
           Save rules
         </PrimaryButton>
         {saved && !busy && (
-          <span className="text-xs font-medium text-emerald-600">Saved</span>
+          <span className="text-xs font-medium text-brand-700">Saved</span>
         )}
       </div>
     </form>

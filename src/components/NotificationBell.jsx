@@ -3,7 +3,7 @@ import { Bell, CheckCircle2, Inbox, XCircle } from 'lucide-react'
 import { useNotifications } from '../hooks/useNotifications'
 
 const KIND_STYLES = {
-  approved: { Icon: CheckCircle2, tone: 'text-emerald-600 bg-emerald-50' },
+  approved: { Icon: CheckCircle2, tone: 'text-brand-700 bg-brand-50' },
   rejected: { Icon: XCircle, tone: 'text-rose-600 bg-rose-50' },
   cancelled: { Icon: XCircle, tone: 'text-slate-500 bg-slate-100' },
   info: { Icon: Inbox, tone: 'text-brand-600 bg-brand-50' },

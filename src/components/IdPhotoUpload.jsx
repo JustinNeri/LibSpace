@@ -66,7 +66,7 @@ export default function IdPhotoUpload({
         <span
           className={[
             'text-xs font-semibold',
-            complete ? 'text-emerald-600' : 'text-slate-400',
+            complete ? 'text-brand-700' : 'text-slate-400',
           ].join(' ')}
         >
           {photos.length} of {required}
@@ -142,7 +142,7 @@ export default function IdPhotoUpload({
         </p>
       ) : complete ? (
         <div className="mt-2 flex items-center justify-between gap-2">
-          <p className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600">
+          <p className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-700">
             <Check className="size-3" strokeWidth={3} />
             All {required} IDs added
           </p>

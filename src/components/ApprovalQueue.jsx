@@ -106,7 +106,7 @@ export default function ApprovalQueue({ onDecided }) {
   if (rows.length === 0) {
     return (
       <div className="surface p-16 text-center">
-        <span className="mx-auto grid size-11 place-items-center rounded-xl bg-emerald-50 text-emerald-600">
+        <span className="mx-auto grid size-11 place-items-center rounded-xl bg-brand-50 text-brand-600">
           <Inbox className="size-5" strokeWidth={2} />
         </span>
         <p className="mt-4 text-sm font-medium text-slate-900">Nothing waiting</p>
@@ -182,7 +182,7 @@ export default function ApprovalQueue({ onDecided }) {
                   <span className="text-slate-400"> · {row.student_id}</span>
                 </p>
 
-                <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-slate-500">
+                <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-slate-500">
                   <Users className="size-3.5" strokeWidth={2} />
                   {row.group_size} members
                   {row.purpose && <span className="text-slate-400">· {row.purpose}</span>}
@@ -223,7 +223,7 @@ export default function ApprovalQueue({ onDecided }) {
                   onClick={() => decide(row, 'approved')}
                   disabled={isBusy || expired}
                   title={expired ? 'That time has already passed' : undefined}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-emerald-600/25 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-md disabled:pointer-events-none disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-brand-700 px-5 py-2.5 text-sm font-bold tracking-wide text-white transition-colors duration-200 hover:bg-brand-800 disabled:pointer-events-none disabled:opacity-50"
                 >
                   {isBusy ? (
                     <Loader2 className="size-4 animate-spin" strokeWidth={2.5} />

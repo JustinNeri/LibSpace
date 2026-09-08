@@ -14,7 +14,7 @@ import { formatLongDate, formatTime, minutesFromDate } from '../lib/time'
 
 const STATUS_STYLES = {
   pending: { label: 'Awaiting approval', className: 'bg-amber-50 text-amber-700' },
-  approved: { label: 'Confirmed', className: 'bg-emerald-50 text-emerald-700' },
+  approved: { label: 'Confirmed', className: 'bg-brand-50 text-brand-700' },
   rejected: { label: 'Declined', className: 'bg-rose-50 text-rose-700' },
   no_show: { label: 'Released — no check-in', className: 'bg-rose-50 text-rose-700' },
   completed: { label: 'Finished', className: 'bg-slate-100 text-slate-500' },

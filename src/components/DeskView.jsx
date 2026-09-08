@@ -145,7 +145,7 @@ export default function DeskView({ dateKey, onChanged }) {
                   {row.student_name}
                   <span className="text-slate-400"> · {row.student_id}</span>
                 </p>
-                <p className="mt-1 inline-flex items-center gap-3 text-xs text-slate-500">
+                <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
                   <span className="inline-flex items-center gap-1.5">
                     <Users className="size-3.5" strokeWidth={2} />
                     {row.group_size}
@@ -231,7 +231,7 @@ function deskState(row) {
 const STATE_STYLES = {
   upcoming: { label: 'Upcoming', className: 'bg-slate-100 text-slate-600', Icon: Clock },
   due: { label: 'Waiting', className: 'bg-amber-50 text-amber-700', Icon: AlertTriangle },
-  in: { label: 'In room', className: 'bg-emerald-50 text-emerald-700', Icon: DoorOpen },
+  in: { label: 'In room', className: 'bg-brand-50 text-brand-700', Icon: DoorOpen },
   done: { label: 'Finished', className: 'bg-slate-100 text-slate-500', Icon: CheckCheck },
   no_show: { label: 'No-show', className: 'bg-rose-50 text-rose-700', Icon: AlertTriangle },
 }

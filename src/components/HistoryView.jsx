@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabaseClient'
 import { formatTime, minutesFromDate, toDateKey } from '../lib/time'
 
 const STATUS_STYLES = {
-  completed: 'bg-emerald-50 text-emerald-700',
+  completed: 'bg-brand-50 text-brand-700',
   approved: 'bg-brand-50 text-brand-700',
   pending: 'bg-amber-50 text-amber-700',
   rejected: 'bg-rose-50 text-rose-700',

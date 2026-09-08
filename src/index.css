@@ -159,26 +159,6 @@
     }
   }
 
-  /* Ruled paper, used behind the sign-in screen. The rules sit far enough
-     apart to register as a logbook page without becoming a texture. */
-  .ruled-paper {
-    background-color: var(--color-slate-50);
-    background-image:
-      linear-gradient(
-        to bottom,
-        transparent 31px,
-        oklch(0.472 0.015 70 / 0.07) 31px,
-        oklch(0.472 0.015 70 / 0.07) 32px
-      );
-    background-size: 100% 32px;
-  }
-
-  /* The rubber-stamp mark on the sign-in card. */
-  .stamp {
-    @apply rounded-md border-2 px-2.5 py-1 text-[10px] font-bold tracking-[0.18em] uppercase;
-    border-color: oklch(0.618 0.172 42 / 0.5);
-    color: oklch(0.522 0.148 40 / 0.85);
-  }
 }
 
 @layer utilities {

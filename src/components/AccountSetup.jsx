@@ -6,10 +6,9 @@ import {
   Eye,
   EyeOff,
   Loader2,
-  Lock,
-  UserRound,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
+import AuthLayout, { AuthHeading, SectionHeading, Steps, authField } from './AuthLayout'
 import { MIN_PASSWORD_LENGTH, passwordProblem } from '../lib/validation'
 import {
   COURSES,
@@ -113,33 +112,37 @@ export default function AccountSetup() {
   }
 
   return (
-    <div className="ruled-paper flex min-h-screen items-center justify-center px-5 py-10 sm:px-6">
-      <div className="surface w-full max-w-lg p-6 animate-slide-up sm:p-8">
-        <span className="grid size-11 place-items-center rounded-xl bg-slate-900 text-white">
-          {isRecovery ? (
-            <Lock className="size-5" strokeWidth={2} />
-          ) : (
-            <UserRound className="size-5" strokeWidth={2} />
-          )}
-        </span>
+    <AuthLayout
+      wide={!isRecovery}
+      footer={
+        <button
+          type="button"
+          onClick={signOut}
+          className="font-semibold text-white/70 underline decoration-white/30 underline-offset-4 transition-colors duration-200 hover:text-white"
+        >
+          Sign out
+        </button>
+      }
+    >
+      <div className="animate-slide-up">
+        {!isRecovery && <Steps current={2} />}
 
-        <h1 className="mt-5 text-2xl font-semibold text-slate-900">
-          {isRecovery ? 'Set a new password' : 'Finish your account'}
-        </h1>
-        <p className="mt-2 text-sm text-slate-500">
+        <AuthHeading title={isRecovery ? 'Set a new password' : 'Finish your account'}>
           Email verified as{' '}
-          <span className="font-medium text-slate-900">{user?.email}</span>.
+          <span className="font-semibold text-slate-900">{user?.email}</span>.
           {isRecovery
             ? ' Choose a new password to finish.'
             : ` Your details appear on every reservation you make at the ${UNIVERSITY_NAME} library.`}
-        </p>
+        </AuthHeading>
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+        <form onSubmit={handleSubmit} className="mt-7 space-y-7">
           {!isRecovery && (
             <>
               <Section title="Name">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_72px]">
-                  <Field label="Last name">
+                {/* Last name owns its row; first name and the single initial
+                    share the next one, so the initial is never a lone wide box. */}
+                <div className="grid grid-cols-[1fr_72px] gap-3 sm:grid-cols-[1fr_1fr_80px]">
+                  <Field label="Last name" className="col-span-2 sm:col-span-1">
                     <input
                       type="text"
                       value={lastName}
@@ -162,9 +165,7 @@ export default function AccountSetup() {
                     />
                   </Field>
 
-                  {/* A single initial does not need a full-width box on a
-                      phone, where the grid is one column. */}
-                  <Field label="M.I." className="max-w-24 sm:max-w-none">
+                  <Field label="M.I.">
                     <input
                       type="text"
                       value={middleInitial}
@@ -299,7 +300,7 @@ export default function AccountSetup() {
                 </p>
               )}
               {!mismatch && confirm.length > 0 && !problem && (
-                <p className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-emerald-600">
+                <p className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-brand-700">
                   <Check className="size-3" strokeWidth={3} />
                   Passwords match
                 </p>
@@ -333,15 +334,8 @@ export default function AccountSetup() {
           </button>
         </form>
 
-        <button
-          type="button"
-          onClick={signOut}
-          className="mt-6 w-full text-center text-xs font-medium text-slate-400 transition-colors duration-200 hover:text-slate-700"
-        >
-          Sign out
-        </button>
       </div>
-    </div>
+    </AuthLayout>
   )
 }
 
@@ -349,23 +343,20 @@ export default function AccountSetup() {
 
 function Section({ title, children }) {
   return (
-    <fieldset className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
-      <legend className="px-1.5 text-[11px] font-bold tracking-[0.14em] text-slate-500 uppercase">
-        {title}
-      </legend>
+    <section>
+      <SectionHeading>{title}</SectionHeading>
       {children}
-    </fieldset>
+    </section>
   )
 }
 
 function Field({ label, className = '', children }) {
   return (
     <div className={className}>
-      <label className="text-xs font-medium text-slate-600">{label}</label>
+      <label className="text-xs font-semibold text-slate-600">{label}</label>
       {children}
     </div>
   )
 }
 
-const fieldClass =
-  'mt-1 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 transition-colors duration-200 placeholder:text-slate-400 hover:border-slate-400 focus:border-brand-600 focus:ring-2 focus:ring-brand-600/15 focus:outline-none'
+const fieldClass = `mt-1.5 ${authField}`

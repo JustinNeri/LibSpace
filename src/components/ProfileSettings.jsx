@@ -227,7 +227,7 @@ export default function ProfileSettings() {
         <div className="mt-5 flex items-center gap-3">
           <SaveButton busy={detailsBusy}>Save details</SaveButton>
           {detailsSaved && !detailsBusy && (
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-700">
               <Check className="size-3" strokeWidth={3} />
               Saved
             </span>
@@ -290,7 +290,7 @@ export default function ProfileSettings() {
         <div className="mt-5 flex items-center gap-3">
           <SaveButton busy={passwordBusy}>Update password</SaveButton>
           {passwordSaved && !passwordBusy && (
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-700">
               <Check className="size-3" strokeWidth={3} />
               Updated
             </span>

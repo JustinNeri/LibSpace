@@ -98,7 +98,7 @@ export default function DaySummary({
     <div className="mb-5 grid grid-cols-3 gap-2 sm:gap-3">
       <Stat
         icon={shut || stats.offHours ? Moon : DoorOpen}
-        tone={shut || stats.offHours ? 'slate' : 'emerald'}
+        tone={shut || stats.offHours ? 'slate' : 'brand'}
         value={shut || nowMinutes === null || stats.offHours ? '—' : stats.freeNow}
         suffix={
           shut || nowMinutes === null || stats.offHours ? '' : ` of ${stats.openNow}`
@@ -117,7 +117,7 @@ export default function DaySummary({
       />
       <Stat
         icon={CalendarCheck}
-        tone={shut ? 'slate' : 'brand'}
+        tone="slate"
         value={shut ? '—' : stats.freeSlots}
         label={
           shut
@@ -141,7 +141,6 @@ export default function DaySummary({
 }
 
 const TONES = {
-  emerald: 'bg-emerald-50 text-emerald-600',
   slate: 'bg-slate-100 text-slate-500',
   brand: 'bg-brand-50 text-brand-600',
   amber: 'bg-amber-50 text-amber-600',
