@@ -218,8 +218,8 @@ export default function ProfileSettings() {
           <label
             className={[
               'absolute -right-2 -bottom-2 grid size-8 cursor-pointer place-items-center',
-              'rounded-full bg-slate-900 text-white ring-2 ring-white transition-colors',
-              'duration-200 hover:bg-slate-700',
+              'rounded-full bg-brand-700 text-white ring-2 ring-white transition-colors',
+              'duration-200 hover:bg-brand-800',
               photoBusy ? 'pointer-events-none opacity-60' : '',
             ].join(' ')}
             title="Change photo"

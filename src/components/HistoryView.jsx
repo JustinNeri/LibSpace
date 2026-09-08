@@ -195,7 +195,7 @@ export default function HistoryView() {
           type="button"
           onClick={exportCsv}
           disabled={visible.length === 0}
-          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-md disabled:pointer-events-none disabled:opacity-40"
+          className="inline-flex items-center gap-2 rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-brand-800 hover:shadow-md disabled:pointer-events-none disabled:opacity-40"
         >
           <Download className="size-4" strokeWidth={2.5} />
           Export CSV

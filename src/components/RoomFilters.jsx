@@ -126,7 +126,7 @@ function Chip({ active, onClick, children }) {
       className={[
         'shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors duration-200',
         active
-          ? 'bg-slate-900 text-white'
+          ? 'bg-brand-700 text-white'
           : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900',
       ].join(' ')}
     >

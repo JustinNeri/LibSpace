@@ -120,7 +120,7 @@ export default function DayStrip({ date, onChangeDate }) {
               className={[
                 'group relative flex min-w-[3.25rem] flex-1 flex-col items-center gap-1 rounded-2xl py-2.5 transition-all duration-200 ease-in-out',
                 selected
-                  ? 'bg-slate-900 text-white shadow-sm'
+                  ? 'bg-brand-700 text-white shadow-sm'
                   : isSunday
                     ? 'text-slate-400 hover:bg-slate-100'
                     : 'text-slate-600 hover:bg-slate-100',
@@ -136,7 +136,7 @@ export default function DayStrip({ date, onChangeDate }) {
                   <span
                     className={[
                       'text-[9px] font-extrabold sm:text-[10px]',
-                      selected ? 'text-accent-300' : 'text-accent-600',
+                      selected ? 'text-accent-200' : 'text-accent-600',
                     ].join(' ')}
                   >
                     TODAY
