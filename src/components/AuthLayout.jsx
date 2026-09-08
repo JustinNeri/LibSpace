@@ -97,22 +97,23 @@ function CampusField() {
           src={CAMPUS_PHOTO}
           alt=""
           onError={() => setPhotoMissing(true)}
-          className="absolute inset-0 size-full object-cover object-center opacity-45"
+          className="absolute inset-0 size-full object-cover object-center opacity-90"
           style={{
             // Hold the photo back from the top of the screen, where the
             // lockup and heading need clean contrast, and let it come up
             // behind and below the card.
             maskImage:
-              'linear-gradient(to bottom, transparent 8%, black 60%, black 100%)',
+              'linear-gradient(to bottom, transparent 4%, black 42%, black 100%)',
             WebkitMaskImage:
-              'linear-gradient(to bottom, transparent 8%, black 60%, black 100%)',
+              'linear-gradient(to bottom, transparent 4%, black 42%, black 100%)',
           }}
         />
       )}
 
-      {/* Pine tint over the photo: keeps it in the brand's colour, and keeps
-          white type readable on it at every screen height. */}
-      <div className="absolute inset-0 bg-gradient-to-b from-brand-900 via-brand-900/72 to-brand-900/88" />
+      {/* Pine tint over the photo: opaque at the top, where the lockup and
+          the heading sit on it, and thinning towards the bottom so the campus
+          actually reads as a photograph rather than as a texture. */}
+      <div className="absolute inset-0 bg-gradient-to-b from-brand-900 via-brand-900/70 to-brand-900/55" />
 
       {/* A little lift directly behind the card. */}
       <div
