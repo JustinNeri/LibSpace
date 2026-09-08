@@ -269,6 +269,7 @@ function Workspace() {
               graceMinutes={graceMinutes}
               dayClosedReason={dayClosedReason}
               currentUserId={user.id}
+              isAdmin={isAdmin}
               loading={loading}
             />
           )}

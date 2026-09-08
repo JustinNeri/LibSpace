@@ -18,6 +18,7 @@ export default function DaySummary({
   graceMinutes = 0,
   dayClosedReason = null,
   currentUserId = null,
+  isAdmin = false,
   loading = false,
 }) {
   const stats = useMemo(() => {
@@ -30,6 +31,7 @@ export default function DaySummary({
           )
 
     let freeNow = 0
+    let openNow = 0
     let freeSlots = 0
 
     for (const room of rooms) {
@@ -46,24 +48,33 @@ export default function DaySummary({
         dayClosedReason,
       })
       freeSlots += summarise(lane, { slots, nowMinutes, dayClosedReason }).free
-      if (currentIndex !== -1 && lane[currentIndex]?.state === 'free') freeNow += 1
+
+      if (currentIndex !== -1 && lane[currentIndex]?.state !== 'closed') {
+        openNow += 1
+        if (lane[currentIndex].state === 'free') freeNow += 1
+      }
     }
 
-    const awaiting = currentUserId
-      ? reservations.filter(
-          (row) => row.user_id === currentUserId && row.status === 'pending',
-        ).length
-      : 0
+    // Staff need the queue, not their own bookings: filtering an admin down
+    // to `user_id === currentUserId` left this tile reading 0 however many
+    // requests were actually waiting for them.
+    const awaiting = reservations.filter(
+      (row) =>
+        row.status === 'pending' && (isAdmin || (currentUserId && row.user_id === currentUserId)),
+    ).length
 
     // currentIndex is -1 whenever the clock sits outside the day's window —
     // before opening or after closing — and "0 of 10 free right now" is a
-    // misleading way to say the library is shut.
+    // misleading way to say the library is shut. So is every room being shut
+    // at this hour while the window stays open for some other room.
     return {
       freeNow,
       freeSlots,
       awaiting,
-      roomCount: rooms.length,
-      offHours: nowMinutes !== null && currentIndex === -1,
+      // Rooms actually open at this minute, not every room on the books: on a
+      // Saturday with two rooms open, "1 of 10" understates the odds badly.
+      openNow,
+      offHours: nowMinutes !== null && (currentIndex === -1 || openNow === 0),
     }
   }, [
     rooms,
@@ -76,6 +87,7 @@ export default function DaySummary({
     graceMinutes,
     dayClosedReason,
     currentUserId,
+    isAdmin,
   ])
 
   if (loading || rooms.length === 0) return null
@@ -89,7 +101,7 @@ export default function DaySummary({
         tone={shut || stats.offHours ? 'slate' : 'emerald'}
         value={shut || nowMinutes === null || stats.offHours ? '—' : stats.freeNow}
         suffix={
-          shut || nowMinutes === null || stats.offHours ? '' : ` of ${stats.roomCount}`
+          shut || nowMinutes === null || stats.offHours ? '' : ` of ${stats.openNow}`
         }
         label={
           dayClosedReason === 'past'
@@ -115,11 +127,14 @@ export default function DaySummary({
               : 'Open half-hour slots'
         }
       />
+      {/* Day-scoped, like everything else on this screen — `reservations`
+          only ever holds the day being viewed, so the label says so rather
+          than implying a running total. */}
       <Stat
         icon={Hourglass}
-        tone="amber"
+        tone={stats.awaiting === 0 ? 'slate' : 'amber'}
         value={stats.awaiting}
-        label={stats.awaiting === 1 ? 'Request awaiting staff' : 'Requests awaiting staff'}
+        label={isAdmin ? 'Pending this day' : 'Yours pending this day'}
       />
     </div>
   )
