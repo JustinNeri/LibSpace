@@ -5,6 +5,7 @@ import {
   CalendarPlus,
   CheckCircle2,
   Monitor,
+  Moon,
   Plug,
   PenLine,
   Sunrise,
@@ -84,6 +85,9 @@ export default function RoomSchedule({
       }),
     [room, slots, schedules, blocks, reservations, weekday, dayWindow, nowMinutes],
   )
+
+  // Past closing there is nothing left to offer, however the slots read.
+  const dayOver = closes !== null && nowMinutes !== null && nowMinutes >= closes
 
   /** Free starts split by half of the day, plus merged unavailable ranges. */
   const { morning, afternoon, taken, freeCount } = useMemo(() => {
@@ -169,13 +173,23 @@ export default function RoomSchedule({
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 py-3.5 text-sm font-bold tracking-wide text-white transition-colors duration-200 hover:bg-brand-800 disabled:pointer-events-none disabled:opacity-50 sm:w-auto"
           >
             <CalendarPlus className="size-4" strokeWidth={2.5} />
-            {freeCount === 0 ? 'No time left today' : 'Reserve this room'}
+            {dayOver
+              ? 'Closed for today'
+              : freeCount === 0
+                ? 'No time left today'
+                : 'Reserve this room'}
           </button>
         </div>
 
         <div className="mt-6 border-t border-slate-200/60 pt-6">
           {!schedule ? (
             <Closed name={room.name} />
+          ) : dayOver ? (
+            <ClosedForToday
+              closes={closes}
+              taken={taken}
+              currentUserId={currentUserId}
+            />
           ) : freeCount === 0 ? (
             <FullyBooked taken={taken} currentUserId={currentUserId} />
           ) : (
@@ -303,6 +317,26 @@ function FullyBooked({ taken, currentUserId }) {
         </p>
         <p className="mt-1 text-sm text-slate-500">
           Try another room, or move to the next day.
+        </p>
+      </div>
+      {taken.length > 0 && <TakenList taken={taken} currentUserId={currentUserId} />}
+    </div>
+  )
+}
+
+/** The room was open today, but that is over. */
+function ClosedForToday({ closes, taken, currentUserId }) {
+  return (
+    <div>
+      <div className="py-6 text-center">
+        <span className="mx-auto grid size-11 place-items-center rounded-xl bg-slate-100 text-slate-400">
+          <Moon className="size-5" strokeWidth={2} />
+        </span>
+        <p className="mt-4 text-sm font-semibold text-slate-900">
+          Closed for today
+        </p>
+        <p className="mt-1 text-sm text-slate-500">
+          This room closed at {formatTime(closes)}. Pick tomorrow to book it.
         </p>
       </div>
       {taken.length > 0 && <TakenList taken={taken} currentUserId={currentUserId} />}

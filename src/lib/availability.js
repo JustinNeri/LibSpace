@@ -113,17 +113,55 @@ export function startOptions(lane, slots) {
   return options
 }
 
-/** Day-level counts for a room card. */
-export function summarise(lane) {
+/**
+ * Day-level counts for a room card.
+ *
+ * Pass `slots` and `nowMinutes` to get the room's own opening hours back as
+ * well. Without them the time-of-day flags stay false, which keeps older
+ * callers working but means a shut room reads as merely full.
+ *
+ * "No free slots" has three quite different causes and the caller has to be
+ * able to tell them apart:
+ *   closed       the room has no hours on this weekday at all
+ *   dayOver      it has closed for the evening — nothing left to say yes to
+ *   fullyBooked  it is open, and every remaining slot is taken
+ */
+export function summarise(lane, { slots = null, nowMinutes = null } = {}) {
   const free = lane.filter((cell) => cell.state === 'free').length
   const openTotal = lane.filter((cell) => cell.state !== 'closed').length
   const firstFree = lane.findIndex((cell) => cell.state === 'free')
+  const closed = openTotal === 0
+
+  // Read the room's hours back off the lane — everything the schedule did
+  // not cover is already marked closed, so the first and last open slots are
+  // the opening and closing times.
+  let opensMin = null
+  let closesMin = null
+  if (slots && !closed) {
+    const firstOpen = lane.findIndex((cell) => cell.state !== 'closed')
+    let lastOpen = firstOpen
+    for (let i = lane.length - 1; i > firstOpen; i -= 1) {
+      if (lane[i].state !== 'closed') {
+        lastOpen = i
+        break
+      }
+    }
+    opensMin = slots[firstOpen].startMin
+    closesMin = slots[lastOpen].endMin
+  }
+
+  const dayOver = closesMin !== null && nowMinutes !== null && nowMinutes >= closesMin
+  const notYetOpen = opensMin !== null && nowMinutes !== null && nowMinutes < opensMin
 
   return {
     free,
     openTotal,
-    closed: openTotal === 0,
-    fullyBooked: openTotal > 0 && free === 0,
+    opensMin,
+    closesMin,
+    closed,
+    dayOver,
+    notYetOpen,
+    fullyBooked: !closed && !dayOver && free === 0,
     firstFreeIndex: firstFree === -1 ? null : firstFree,
   }
 }

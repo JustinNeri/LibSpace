@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   CalendarClock,
@@ -8,18 +8,23 @@ import {
   Monitor,
   Users,
   X,
-} from 'lucide-react'
-import IdPhotoUpload from './IdPhotoUpload'
-import { SLOT_MINUTES, formatLongDate, formatTime, fromDateKey } from '../lib/time'
-import { MIN_GROUP_SIZE } from '../lib/constants'
+} from "lucide-react";
+import IdPhotoUpload from "./IdPhotoUpload";
+import {
+  SLOT_MINUTES,
+  formatLongDate,
+  formatTime,
+  fromDateKey,
+} from "../lib/time";
+import { MIN_GROUP_SIZE } from "../lib/constants";
 
 function initialForm(defaults) {
   return {
-    studentName: defaults?.studentName ?? '',
-    studentId: defaults?.studentId ?? '',
+    studentName: defaults?.studentName ?? "",
+    studentId: defaults?.studentId ?? "",
     groupSize: MIN_GROUP_SIZE,
-    purpose: '',
-  }
+    purpose: "",
+  };
 }
 
 /**
@@ -44,49 +49,50 @@ export default function BookingModal({
   onClose,
   onConfirm,
 }) {
-  const [form, setForm] = useState(() => initialForm(defaults))
-  const [photos, setPhotos] = useState([])
+  const [form, setForm] = useState(() => initialForm(defaults));
+  const [photos, setPhotos] = useState([]);
   const [startMin, setStartMin] = useState(
     () => booking?.startMin ?? startOptions[0]?.startMin ?? null,
-  )
-  const [spanSlots, setSpanSlots] = useState(1)
-  const [touched, setTouched] = useState(false)
-  const firstFieldRef = useRef(null)
+  );
+  const [spanSlots, setSpanSlots] = useState(1);
+  const [touched, setTouched] = useState(false);
+  const firstFieldRef = useRef(null);
 
-  const open = Boolean(booking)
-
-  useEffect(() => {
-    if (!open) return
-    const id = requestAnimationFrame(() => firstFieldRef.current?.focus())
-    return () => cancelAnimationFrame(id)
-  }, [open])
+  const open = Boolean(booking);
 
   useEffect(() => {
-    if (!open) return
+    if (!open) return;
+    const id = requestAnimationFrame(() => firstFieldRef.current?.focus());
+    return () => cancelAnimationFrame(id);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
 
     const onKeyDown = (event) => {
-      if (event.key === 'Escape' && !saving) onClose()
-    }
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    window.addEventListener('keydown', onKeyDown)
+      if (event.key === "Escape" && !saving) onClose();
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
 
     return () => {
-      document.body.style.overflow = previousOverflow
-      window.removeEventListener('keydown', onKeyDown)
-    }
-  }, [open, saving, onClose])
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open, saving, onClose]);
 
   /** How far the chosen start can run before hitting something. */
   const maxSpan = useMemo(
-    () => startOptions.find((option) => option.startMin === startMin)?.maxSpan ?? 0,
+    () =>
+      startOptions.find((option) => option.startMin === startMin)?.maxSpan ?? 0,
     [startOptions, startMin],
-  )
+  );
 
   // Shorten the duration if the chosen start cannot support it.
   useEffect(() => {
-    if (maxSpan > 0 && spanSlots > maxSpan) setSpanSlots(maxSpan)
-  }, [maxSpan, spanSlots])
+    if (maxSpan > 0 && spanSlots > maxSpan) setSpanSlots(maxSpan);
+  }, [maxSpan, spanSlots]);
 
   const durationOptions = useMemo(
     () =>
@@ -96,24 +102,33 @@ export default function BookingModal({
           count,
           label:
             count % 2 === 0
-              ? `${count / 2} hour${count > 2 ? 's' : ''}`
+              ? `${count / 2} hour${count > 2 ? "s" : ""}`
               : `${count * SLOT_MINUTES} minutes`,
         })),
     [maxSpan],
-  )
+  );
 
-  if (!open) return null
+  if (!open) return null;
 
-  const { room, dateKey } = booking
-  const endMin = startMin === null ? null : startMin + spanSlots * SLOT_MINUTES
+  const { room, dateKey } = booking;
+  const endMin = startMin === null ? null : startMin + spanSlots * SLOT_MINUTES;
 
-  const groupSize = Number(form.groupSize)
-  const validGroup = Number.isFinite(groupSize) && groupSize >= MIN_GROUP_SIZE
+  const groupSize = Number(form.groupSize);
+  const validGroup = Number.isFinite(groupSize) && groupSize >= MIN_GROUP_SIZE;
 
   const errors = {
-    startMin: startMin === null ? 'Choose a start time.' : null,
-    studentName: form.studentName.trim() ? null : 'Your name is required.',
-    studentId: form.studentId.trim() ? null : 'Student number is required.',
+    // maxSpan drops to 0 when the chosen start is no longer among the free
+    // ones — the slot was taken while this form sat open, or it was reached
+    // from a stale grid. Without this the form stays submittable and the
+    // student only finds out when the database rejects the overlap.
+    startMin:
+      startMin === null
+        ? "Choose a start time."
+        : maxSpan === 0
+          ? "That time is no longer free. Pick another start time."
+          : null,
+    studentName: form.studentName.trim() ? null : "Your name is required.",
+    studentId: form.studentId.trim() ? null : "Student number is required.",
     groupSize: !validGroup
       ? `At least ${MIN_GROUP_SIZE} people are needed to reserve a room.`
       : groupSize > room.capacity
@@ -122,18 +137,18 @@ export default function BookingModal({
     // Staff have the IDs in hand at the desk, so photos are optional there.
     photos:
       !asAdmin && photos.length < (validGroup ? groupSize : MIN_GROUP_SIZE)
-        ? 'Add one ID photo for every member.'
+        ? "Add one ID photo for every member."
         : null,
-  }
-  const isValid = Object.values(errors).every((message) => message === null)
+  };
+  const isValid = Object.values(errors).every((message) => message === null);
 
   const setField = (key) => (event) =>
-    setForm((current) => ({ ...current, [key]: event.target.value }))
+    setForm((current) => ({ ...current, [key]: event.target.value }));
 
   const handleSubmit = (event) => {
-    event.preventDefault()
-    setTouched(true)
-    if (!isValid || saving) return
+    event.preventDefault();
+    setTouched(true);
+    if (!isValid || saving) return;
 
     onConfirm({
       room,
@@ -145,10 +160,10 @@ export default function BookingModal({
       groupSize,
       purpose: form.purpose.trim(),
       photos,
-    })
-  }
+    });
+  };
 
-  const showError = (key) => (touched ? errors[key] : null)
+  const showError = (key) => (touched ? errors[key] : null);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
@@ -175,7 +190,7 @@ export default function BookingModal({
         <header className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200/60 px-5 py-4 sm:px-6 sm:py-5">
           <div className="min-w-0">
             <p className="text-[11px] font-bold tracking-[0.14em] text-brand-700 uppercase">
-              {asAdmin ? 'Walk-in · confirmed on save' : 'New reservation'}
+              {asAdmin ? "Walk-in · confirmed on save" : "New reservation"}
             </p>
             <h2
               id="booking-modal-title"
@@ -191,7 +206,7 @@ export default function BookingModal({
               {room.equipment?.length > 0 && (
                 <span className="inline-flex items-center gap-1.5">
                   <Monitor className="size-3.5" strokeWidth={2} />
-                  {room.equipment.join(' · ')}
+                  {room.equipment.join(" · ")}
                 </span>
               )}
             </div>
@@ -221,16 +236,27 @@ export default function BookingModal({
 
               {startOptions.length === 0 ? (
                 <p className="text-sm text-slate-500">
-                  This room has no free time left on{' '}
+                  This room has no free time left on{" "}
                   {formatLongDate(fromDateKey(dateKey))}.
                 </p>
               ) : (
                 <>
-                  <Field label="Start time" error={showError('startMin')}>
+                  <Field
+                    label="Start time"
+                    error={
+                      errors.startMin && touched
+                        ? errors.startMin
+                        : maxSpan === 0 && startMin !== null
+                          ? errors.startMin
+                          : null
+                    }
+                  >
                     <select
-                      value={startMin ?? ''}
-                      onChange={(event) => setStartMin(Number(event.target.value))}
-                      className={inputClass(showError('startMin'))}
+                      value={startMin ?? ""}
+                      onChange={(event) =>
+                        setStartMin(Number(event.target.value))
+                      }
+                      className={inputClass(showError("startMin"))}
                     >
                       <option value="" disabled>
                         Select a start time…
@@ -246,28 +272,28 @@ export default function BookingModal({
                   <Field label="Duration" className="mt-3">
                     <div className="flex flex-wrap gap-2">
                       {durationOptions.map(({ count, label }) => {
-                        const active = count === spanSlots
+                        const active = count === spanSlots;
                         return (
                           <button
                             key={count}
                             type="button"
                             onClick={() => setSpanSlots(count)}
                             className={[
-                              'flex-1 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-colors duration-200 sm:flex-none',
+                              "flex-1 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-colors duration-200 sm:flex-none",
                               active
-                                ? 'bg-brand-700 text-white'
-                                : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-900',
-                            ].join(' ')}
+                                ? "bg-brand-700 text-white"
+                                : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-900",
+                            ].join(" ")}
                           >
                             {label}
                           </button>
-                        )
+                        );
                       })}
                     </div>
                     {maxSpan > 0 && maxSpan < 4 && (
                       <p className="mt-2 text-xs text-slate-400">
-                        Capped at {maxSpan * SLOT_MINUTES} minutes — the room is taken
-                        after that.
+                        Capped at {maxSpan * SLOT_MINUTES} minutes — the room is
+                        taken after that.
                       </p>
                     )}
                   </Field>
@@ -283,7 +309,7 @@ export default function BookingModal({
                           {formatTime(startMin)} – {formatTime(endMin)}
                         </span>
                         <span className="text-slate-500">
-                          {' '}
+                          {" "}
                           · {formatLongDate(fromDateKey(dateKey))}
                         </span>
                       </p>
@@ -294,41 +320,41 @@ export default function BookingModal({
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Full name" error={showError('studentName')}>
+              <Field label="Full name" error={showError("studentName")}>
                 <input
                   ref={firstFieldRef}
                   type="text"
                   value={form.studentName}
-                  onChange={setField('studentName')}
+                  onChange={setField("studentName")}
                   placeholder="Dela Cruz, Juan M."
                   autoComplete="name"
-                  className={inputClass(showError('studentName'))}
+                  className={inputClass(showError("studentName"))}
                 />
               </Field>
 
-              <Field label="Student number" error={showError('studentId')}>
+              <Field label="Student number" error={showError("studentId")}>
                 <input
                   type="text"
                   value={form.studentId}
-                  onChange={setField('studentId')}
+                  onChange={setField("studentId")}
                   placeholder="2024-00123"
-                  className={inputClass(showError('studentId'))}
+                  className={inputClass(showError("studentId"))}
                 />
               </Field>
             </div>
 
-            <Field label="Group size" error={showError('groupSize')}>
+            <Field label="Group size" error={showError("groupSize")}>
               <input
                 type="number"
                 min={MIN_GROUP_SIZE}
                 max={room.capacity}
                 value={form.groupSize}
-                onChange={setField('groupSize')}
-                className={`${inputClass(showError('groupSize'))} max-w-32`}
+                onChange={setField("groupSize")}
+                className={`${inputClass(showError("groupSize"))} max-w-32`}
               />
               <p className="mt-2 text-xs text-slate-400">
-                {MIN_GROUP_SIZE} to {room.capacity} people. The library requires at least{' '}
-                {MIN_GROUP_SIZE} to reserve a discussion room.
+                {MIN_GROUP_SIZE} to {room.capacity} people. The library requires
+                at least {MIN_GROUP_SIZE} to reserve a discussion room.
               </p>
             </Field>
 
@@ -339,15 +365,17 @@ export default function BookingModal({
               onChange={setPhotos}
               disabled={saving}
             />
-            {showError('photos') && (
-              <p className="-mt-3 text-xs font-medium text-rose-600">{errors.photos}</p>
+            {showError("photos") && (
+              <p className="-mt-3 text-xs font-medium text-rose-600">
+                {errors.photos}
+              </p>
             )}
 
             <Field label="Purpose" hint="Optional">
               <textarea
                 rows={2}
                 value={form.purpose}
-                onChange={setField('purpose')}
+                onChange={setField("purpose")}
                 placeholder="Thesis consultation, group report, review session…"
                 className={`${inputClass(null)} resize-none`}
               />
@@ -355,7 +383,10 @@ export default function BookingModal({
 
             {error && (
               <div className="flex items-start gap-2.5 rounded-xl border border-rose-200/70 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                <AlertCircle className="mt-0.5 size-4 shrink-0" strokeWidth={2} />
+                <AlertCircle
+                  className="mt-0.5 size-4 shrink-0"
+                  strokeWidth={2}
+                />
                 <p>{error}</p>
               </div>
             )}
@@ -363,7 +394,9 @@ export default function BookingModal({
 
           <footer className="pb-safe shrink-0 border-t border-slate-200/60 bg-slate-50/70 px-5 py-4 sm:px-6">
             {saving && progress && (
-              <p className="mb-3 text-xs font-medium text-slate-500">{progress}</p>
+              <p className="mb-3 text-xs font-medium text-slate-500">
+                {progress}
+              </p>
             )}
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
               <button
@@ -381,13 +414,16 @@ export default function BookingModal({
               >
                 {saving ? (
                   <>
-                    <Loader2 className="size-4 animate-spin" strokeWidth={2.5} />
+                    <Loader2
+                      className="size-4 animate-spin"
+                      strokeWidth={2.5}
+                    />
                     Reserving…
                   </>
                 ) : (
                   <>
                     <Check className="size-4" strokeWidth={2.5} />
-                    {asAdmin ? 'Log walk-in' : 'Confirm booking'}
+                    {asAdmin ? "Log walk-in" : "Confirm booking"}
                   </>
                 )}
               </button>
@@ -396,12 +432,12 @@ export default function BookingModal({
         </form>
       </div>
     </div>
-  )
+  );
 }
 
 /* ---------- local presentational helpers ---------- */
 
-function Field({ label, hint, error, className = '', children }) {
+function Field({ label, hint, error, className = "", children }) {
   return (
     <div className={className}>
       <div className="mb-1.5 flex items-baseline justify-between gap-2">
@@ -409,18 +445,20 @@ function Field({ label, hint, error, className = '', children }) {
         {hint && <span className="text-xs text-slate-400">{hint}</span>}
       </div>
       {children}
-      {error && <p className="mt-1.5 text-xs font-medium text-rose-600">{error}</p>}
+      {error && (
+        <p className="mt-1.5 text-xs font-medium text-rose-600">{error}</p>
+      )}
     </div>
-  )
+  );
 }
 
 function inputClass(hasError) {
   return [
-    'w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-slate-900',
-    'placeholder:text-slate-400 transition-colors duration-200',
-    'focus:outline-none focus:ring-2',
+    "w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-slate-900",
+    "placeholder:text-slate-400 transition-colors duration-200",
+    "focus:outline-none focus:ring-2",
     hasError
-      ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500/15'
-      : 'border-slate-300 hover:border-slate-400 focus:border-brand-600 focus:ring-brand-600/15',
-  ].join(' ')
+      ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/15"
+      : "border-slate-300 hover:border-slate-400 focus:border-brand-600 focus:ring-brand-600/15",
+  ].join(" ");
 }

@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { CalendarCheck, DoorOpen, Hourglass } from 'lucide-react'
+import { CalendarCheck, DoorOpen, Hourglass, Moon } from 'lucide-react'
 import { buildSlots } from '../lib/time'
 import { buildLane, summarise } from '../lib/availability'
 
@@ -41,7 +41,7 @@ export default function DaySummary({
         dayWindow,
         nowMinutes,
       })
-      freeSlots += summarise(lane).free
+      freeSlots += summarise(lane, { slots, nowMinutes }).free
       if (currentIndex !== -1 && lane[currentIndex]?.state === 'free') freeNow += 1
     }
 
@@ -51,7 +51,16 @@ export default function DaySummary({
         ).length
       : 0
 
-    return { freeNow, freeSlots, awaiting, roomCount: rooms.length }
+    // currentIndex is -1 whenever the clock sits outside the day's window —
+    // before opening or after closing — and "0 of 10 free right now" is a
+    // misleading way to say the library is shut.
+    return {
+      freeNow,
+      freeSlots,
+      awaiting,
+      roomCount: rooms.length,
+      offHours: nowMinutes !== null && currentIndex === -1,
+    }
   }, [
     rooms,
     reservations,
@@ -68,17 +77,23 @@ export default function DaySummary({
   return (
     <div className="mb-5 grid grid-cols-3 gap-2 sm:gap-3">
       <Stat
-        icon={DoorOpen}
-        tone="emerald"
-        value={nowMinutes === null ? '—' : stats.freeNow}
-        suffix={nowMinutes === null ? '' : ` of ${stats.roomCount}`}
-        label={nowMinutes === null ? 'Not today' : 'Free right now'}
+        icon={stats.offHours ? Moon : DoorOpen}
+        tone={stats.offHours ? 'slate' : 'emerald'}
+        value={nowMinutes === null || stats.offHours ? '—' : stats.freeNow}
+        suffix={nowMinutes === null || stats.offHours ? '' : ` of ${stats.roomCount}`}
+        label={
+          nowMinutes === null
+            ? 'Not today'
+            : stats.offHours
+              ? 'Library closed now'
+              : 'Free right now'
+        }
       />
       <Stat
         icon={CalendarCheck}
         tone="brand"
         value={stats.freeSlots}
-        label="Open half-hour slots"
+        label={stats.freeSlots === 0 ? 'No slots left today' : 'Open half-hour slots'}
       />
       <Stat
         icon={Hourglass}
@@ -92,6 +107,7 @@ export default function DaySummary({
 
 const TONES = {
   emerald: 'bg-emerald-50 text-emerald-600',
+  slate: 'bg-slate-100 text-slate-500',
   brand: 'bg-brand-50 text-brand-600',
   amber: 'bg-amber-50 text-amber-600',
 }

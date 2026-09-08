@@ -58,7 +58,7 @@ export default function RoomList({
         dayWindow,
         nowMinutes,
       })
-      const summary = summarise(lane)
+      const summary = summarise(lane, { slots, nowMinutes })
 
       // "Free now" needs the block containing the current minute, not just
       // any free block later in the day.
@@ -110,7 +110,7 @@ export default function RoomList({
         const summary = summaries.get(room.id)
         if (!summary) return null
 
-        const unavailable = summary.closed || summary.fullyBooked
+        const unavailable = summary.closed || summary.dayOver || summary.fullyBooked
 
         return (
           <button
@@ -179,6 +179,10 @@ export default function RoomList({
               <div className="mt-2.5 flex items-baseline justify-between gap-2">
                 {summary.closed ? (
                   <span className="text-sm font-medium text-slate-400">Closed today</span>
+                ) : summary.dayOver ? (
+                  <span className="text-sm font-medium text-slate-500">
+                    Closed · reopens tomorrow
+                  </span>
                 ) : summary.fullyBooked ? (
                   <span className="text-sm font-medium text-slate-500">Fully booked</span>
                 ) : (
@@ -190,7 +194,7 @@ export default function RoomList({
                   </span>
                 )}
 
-                {!summary.closed && summary.nextFree !== null && !summary.freeNow && (
+                {!summary.closed && !summary.dayOver && summary.nextFree !== null && !summary.freeNow && (
                   <span className="tnum shrink-0 text-xs font-medium text-slate-400">
                     from {formatTime(summary.nextFree)}
                   </span>

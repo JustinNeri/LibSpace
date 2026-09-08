@@ -209,7 +209,9 @@ language plpgsql
 set search_path = public
 as $$
 begin
-  if new.status = 'active' and exists (
+  -- 'active' was never a status this table allows, so this guard silently
+  -- did nothing: every booking landing on an admin block was accepted.
+  if new.status in ('pending', 'approved') and exists (
     select 1 from public.room_blocks b
     where b.room_id = new.room_id
       and tstzrange(b.start_time, b.end_time, '[)')
