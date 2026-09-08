@@ -121,6 +121,40 @@ export function AuthProvider({ children }) {
       }
     }
 
+    /**
+     * Registration has to know whether the address is taken *before* the
+     * code goes out. `signInWithOtp` mails one either way — for an existing
+     * user it quietly becomes a login code — so signing up with an address
+     * that already had an account looked like it had worked, right up until
+     * the new details overwrote the old account's.
+     *
+     * `incomplete` still gets a code on purpose: an auth user whose setup
+     * never finished has no password to sign in with, so blocking them here
+     * would strand that address permanently.
+     */
+    if (isNewAccount) {
+      const { data: status, error: statusError } = await supabase.rpc(
+        'account_status',
+        { check_email: address },
+      )
+
+      if (statusError) {
+        // The function is not deployed yet. Registration still works exactly
+        // as it did before, rather than the whole screen failing shut.
+        console.warn(
+          '[LibSpace] account_status is unavailable; skipping the duplicate check.',
+          statusError,
+        )
+      } else if (status === 'active') {
+        return {
+          error: {
+            message:
+              'That email already has an account. Sign in instead — or use "Forgot password?" if you cannot remember it.',
+          },
+        }
+      }
+    }
+
     const { error } = await supabase.auth.signInWithOtp({
       email: address,
       options: { shouldCreateUser: isNewAccount },
