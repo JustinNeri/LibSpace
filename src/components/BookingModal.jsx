@@ -94,10 +94,13 @@ export default function BookingModal({
         .filter((count) => count <= maxSpan)
         .map((count) => ({
           count,
+          // Compact enough to sit on one line in a four-across row.
           label:
             count % 2 === 0
-              ? `${count / 2} hour${count > 2 ? 's' : ''}`
-              : `${count * SLOT_MINUTES} minutes`,
+              ? `${count / 2} hr${count > 2 ? 's' : ''}`
+              : count === 1
+                ? '30 min'
+                : '1 hr 30',
         })),
     [maxSpan],
   )
@@ -269,7 +272,7 @@ export default function BookingModal({
                             type="button"
                             onClick={() => setSpanSlots(count)}
                             className={[
-                              'flex-1 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-colors duration-200 sm:flex-none',
+                              'flex-1 rounded-xl px-2 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors duration-200 sm:flex-none sm:px-3.5',
                               active
                                 ? 'bg-brand-700 text-white'
                                 : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-900',
@@ -294,15 +297,14 @@ export default function BookingModal({
                         className="size-4 shrink-0 text-brand-600"
                         strokeWidth={2}
                       />
-                      <p className="min-w-0 truncate text-sm">
-                        <span className="font-semibold text-slate-900">
+                      <div className="min-w-0">
+                        <p className="tnum text-sm font-bold text-slate-900">
                           {formatTime(startMin)} – {formatTime(endMin)}
-                        </span>
-                        <span className="text-slate-500">
-                          {' '}
-                          · {formatLongDate(fromDateKey(dateKey))}
-                        </span>
-                      </p>
+                        </p>
+                        <p className="mt-0.5 truncate text-xs text-slate-500">
+                          {formatLongDate(fromDateKey(dateKey))}
+                        </p>
+                      </div>
                     </div>
                   )}
                 </>
@@ -421,7 +423,7 @@ function Field({ label, hint, error, className = '', children }) {
   return (
     <div className={className}>
       <div className="mb-1.5 flex items-baseline justify-between gap-2">
-        <label className="text-sm font-medium text-slate-700">{label}</label>
+        <label className="text-xs font-semibold text-slate-600">{label}</label>
         {hint && <span className="text-xs text-slate-400">{hint}</span>}
       </div>
       {children}
@@ -431,12 +433,7 @@ function Field({ label, hint, error, className = '', children }) {
 }
 
 function inputClass(hasError) {
-  return [
-    'w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-slate-900',
-    'placeholder:text-slate-400 transition-colors duration-200',
-    'focus:outline-none focus:ring-2',
-    hasError
-      ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500/15'
-      : 'border-slate-300 hover:border-slate-400 focus:border-brand-600 focus:ring-brand-600/15',
-  ].join(' ')
+  return hasError
+    ? 'field border-rose-300 focus:border-rose-500 focus:ring-rose-500/20'
+    : 'field'
 }

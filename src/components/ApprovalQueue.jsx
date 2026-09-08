@@ -6,7 +6,6 @@ import {
   IdCard,
   Inbox,
   Loader2,
-  MapPin,
   Users,
   X,
 } from 'lucide-react'
@@ -141,12 +140,24 @@ export default function ApprovalQueue({ onDecided }) {
             key={row.id}
             className="surface overflow-hidden"
           >
-            <div className="flex flex-wrap items-start justify-between gap-4 p-5">
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0 flex-1 lg:max-w-2xl">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <h3 className="font-display text-lg font-semibold text-slate-900">
+                    {row.rooms?.name ?? 'Room'}
+                  </h3>
+                  <p
+                    className={[
+                      'tnum text-sm font-semibold',
+                      expired ? 'text-slate-400' : 'text-slate-700',
+                    ].join(' ')}
+                  >
+                    {formatTime(minutesFromDate(start))} –{' '}
+                    {formatTime(minutesFromDate(end))}
+                  </p>
                   <span
                     className={[
-                      'rounded-lg px-2 py-1 text-[11px] font-semibold',
+                      'rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase',
                       expired
                         ? 'bg-slate-100 text-slate-500'
                         : 'bg-amber-50 text-amber-700',
@@ -154,32 +165,25 @@ export default function ApprovalQueue({ onDecided }) {
                   >
                     {expired ? 'Expired' : 'Pending'}
                   </span>
-                  <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-900">
-                    <MapPin className="size-3.5 text-slate-400" strokeWidth={2} />
-                    {row.rooms?.name ?? 'Room'}
-                  </p>
                 </div>
 
-                <p
-                  className={[
-                    'mt-2 inline-flex items-center gap-1.5 text-sm',
-                    expired ? 'text-slate-400 line-through' : 'text-slate-600',
-                  ].join(' ')}
-                >
-                  <CalendarClock className="size-3.5 text-slate-400" strokeWidth={2} />
-                  {formatLongDate(start)} · {formatTime(minutesFromDate(start))} –{' '}
-                  {formatTime(minutesFromDate(end))}
+                <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-slate-500">
+                  <CalendarClock className="size-3.5" strokeWidth={2} />
+                  {formatLongDate(start)}
                 </p>
 
                 {expired && (
-                  <p className="mt-1.5 text-xs font-medium text-slate-500">
+                  <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500">
                     This time has already passed — decline it to clear the queue.
                   </p>
                 )}
 
-                <p className="mt-1.5 text-sm text-slate-900">
+                <p className="mt-3 text-sm font-semibold text-slate-900">
                   {row.student_name}
-                  <span className="text-slate-400"> · {row.student_id}</span>
+                  <span className="font-normal text-slate-400">
+                    {' '}
+                    · {row.student_id}
+                  </span>
                 </p>
 
                 <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-slate-500">
@@ -208,12 +212,12 @@ export default function ApprovalQueue({ onDecided }) {
                 </button>
               </div>
 
-              <div className="flex shrink-0 gap-2">
+              <div className="flex shrink-0 gap-2 lg:w-52 lg:justify-end">
                 <button
                   type="button"
                   onClick={() => setRejecting({ id: row.id, reason: '' })}
                   disabled={isBusy}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/60 px-4 py-2.5 text-sm font-medium text-slate-600 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 disabled:pointer-events-none disabled:opacity-50"
+                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-600 transition-colors duration-200 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 disabled:pointer-events-none disabled:opacity-50 lg:flex-none"
                 >
                   <X className="size-4" strokeWidth={2.5} />
                   Reject
@@ -223,7 +227,7 @@ export default function ApprovalQueue({ onDecided }) {
                   onClick={() => decide(row, 'approved')}
                   disabled={isBusy || expired}
                   title={expired ? 'That time has already passed' : undefined}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-brand-700 px-5 py-2.5 text-sm font-bold tracking-wide text-white transition-colors duration-200 hover:bg-brand-800 disabled:pointer-events-none disabled:opacity-50"
+                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand-700 px-5 py-2.5 text-sm font-bold tracking-wide text-white transition-colors duration-200 hover:bg-brand-800 disabled:pointer-events-none disabled:opacity-50 lg:flex-none"
                 >
                   {isBusy ? (
                     <Loader2 className="size-4 animate-spin" strokeWidth={2.5} />

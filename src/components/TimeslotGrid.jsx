@@ -132,8 +132,8 @@ export default function TimeslotGrid({
                   className={[
                     'py-3 pl-2 text-left sm:pl-3',
                     slot.isHour
-                      ? 'border-l border-slate-200/60'
-                      : 'border-l border-slate-100',
+                      ? 'border-l border-slate-200'
+                      : 'border-l border-slate-100/70',
                   ].join(' ')}
                 >
                   <span
@@ -216,40 +216,25 @@ function RoomRow({
         <p className="line-clamp-2 text-[13px] leading-tight font-semibold text-slate-900 sm:truncate sm:text-sm">
           {room.name}
         </p>
-        <div className="mt-1 flex items-center gap-2 sm:mt-1.5">
-          <span className="inline-flex items-center gap-1 text-xs text-slate-500">
-            <Users className="size-3.5" strokeWidth={2} />
+        <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-slate-500">
+          <Users className="size-3 shrink-0" strokeWidth={2} />
+          <span className="truncate">
             {room.capacity}
+            {room.equipment?.length > 0 && ` · ${room.equipment.join(', ')}`}
           </span>
-          {/* Equipment only once the rail is wide enough to hold it. */}
-          <span className="hidden items-center gap-2 sm:flex">
-            {room.equipment?.slice(0, 2).map((item) => (
-              <span
-                key={item}
-                className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500"
-              >
-                {item}
-              </span>
-            ))}
-            {room.equipment?.length > 2 && (
-              <span className="text-[11px] font-medium text-slate-400">
-                +{room.equipment.length - 2}
-              </span>
-            )}
-          </span>
-        </div>
+        </p>
       </div>
 
       {/* Slot lane */}
       {/* min-h, not h: a two-line room name on a phone makes the rail taller
           than the lane, and a fixed height would leave a dead strip under the
           slots. */}
-      <div className="relative grid min-h-16 sm:min-h-20" style={gridTemplate}>
+      <div className="relative grid min-h-14 sm:min-h-16" style={gridTemplate}>
         {slots.map((slot) => {
           const entry = lane?.[slot.index]
           const edge = slot.isHour
-            ? 'border-l border-slate-200/60'
-            : 'border-l border-slate-100'
+            ? 'border-l border-slate-200'
+            : 'border-l border-slate-100/70'
           const position = { gridColumn: `${slot.index + 1} / span 1`, gridRow: 1 }
 
           if (entry?.state === 'closed') {
@@ -335,7 +320,7 @@ function RoomRow({
 
 function SlotCell({ slot, room, edge, position, isPast, isSelected, onClick }) {
   if (isPast) {
-    return <div style={position} className={`${edge} bg-slate-50/70`} aria-hidden />
+    return <div style={position} className={`${edge} bg-slate-100/60`} aria-hidden />
   }
 
   return (
