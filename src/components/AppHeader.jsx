@@ -1,4 +1,4 @@
-import { LibraryBig } from 'lucide-react'
+import { LibSpaceMark } from './Logo'
 import NotificationBell from './NotificationBell'
 import { useAuth } from '../hooks/useAuth'
 import { UNIVERSITY_SHORT } from '../lib/constants'
@@ -30,9 +30,7 @@ export default function AppHeader() {
       <div className="mx-auto flex max-w-[1200px] items-center gap-3 px-4 py-3 sm:px-6 lg:py-5">
         {/* Phones get the brand mark — there is no rail to carry it. */}
         <div className="flex items-center gap-2.5 lg:hidden">
-          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-slate-900 text-white">
-            <LibraryBig className="size-4.5" strokeWidth={2} />
-          </span>
+          <LibSpaceMark className="size-9 shrink-0" />
           <div className="min-w-0">
             <p className="font-display text-sm leading-tight font-semibold text-slate-900">
               LibSpace

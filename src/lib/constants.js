@@ -7,6 +7,17 @@ export const UNIVERSITY_NAME = 'Holy Angel University'
 export const UNIVERSITY_SHORT = 'HAU'
 export const LIBRARY_NAME = 'University Library'
 
+/**
+ * The university's own logo, served from `public/`.
+ *
+ * The file is not in this repo: an institution's crest is its trademark and
+ * has to come from the institution. Save the official artwork (PNG or SVG
+ * with a transparent background) as `public/hau-logo.png` and it appears
+ * beside the LibSpace mark on the sign-in screen and in the app. Set this to
+ * null to leave it out entirely.
+ */
+export const UNIVERSITY_LOGO = '/hau-logo.png'
+
 /** HAU requires a group of at least this many to reserve a discussion room. */
 export const MIN_GROUP_SIZE = 5
 

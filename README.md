@@ -55,6 +55,27 @@ update public.profiles set role = 'admin' where email = 'staff@example.com';
 Students are restricted to `@gmail.com` in the sign-in form **and** by a check
 constraint on `profiles`, so the rule survives a forged client.
 
+## Branding
+
+The LibSpace mark lives in [`src/components/Logo.jsx`](src/components/Logo.jsx) as
+plain SVG — a book spine beside two slot bars, the same shapes the room cards
+and the sign-in background are built from. It is drawn once and reused by the
+sidebar, the mobile header and the sign-in card; `public/favicon.svg` is the
+same geometry so the tab icon and the in-app mark cannot drift.
+
+**The university crest is not in this repo.** It is Holy Angel University's
+trademark, so the official artwork has to come from the university rather than
+be redrawn. To add it:
+
+1. Save the official file as `public/hau-logo.png` (PNG or SVG, transparent
+   background, roughly square).
+2. That is all — `UNIVERSITY_LOGO` in
+   [`src/lib/constants.js`](src/lib/constants.js) already points at it.
+
+Until the file exists, `UniversityCrest` renders nothing rather than a
+placeholder, so the app never shows a stand-in for the real crest. Set
+`UNIVERSITY_LOGO` to `null` to leave it out deliberately.
+
 ## Getting started
 
 ```bash

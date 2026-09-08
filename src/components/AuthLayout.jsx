@@ -1,4 +1,4 @@
-import { LibraryBig } from 'lucide-react'
+import { LibSpaceLockup, UniversityCrest } from './Logo'
 import { LIBRARY_NAME, UNIVERSITY_NAME } from '../lib/constants'
 
 /**
@@ -37,21 +37,16 @@ export default function AuthLayout({ children, footer = null, wide = false }) {
   )
 }
 
-/** Brand mark inside the card, so the card carries the identity on its own. */
+/**
+ * Brand mark inside the card, so the card carries the identity on its own.
+ * The university's crest sits opposite it when the file is present — this is
+ * their library's system, and the front door should say so.
+ */
 function Lockup() {
   return (
-    <div className="mb-7 flex items-center gap-3">
-      <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-brand-700 text-white">
-        <LibraryBig className="size-5.5" strokeWidth={2} />
-      </span>
-      <div className="min-w-0">
-        <p className="font-display text-lg leading-none font-semibold text-slate-900">
-          LibSpace
-        </p>
-        <p className="mt-1 truncate text-[11px] tracking-wide text-slate-500">
-          {UNIVERSITY_NAME}
-        </p>
-      </div>
+    <div className="mb-7 flex items-center justify-between gap-3">
+      <LibSpaceLockup markClass="size-11" />
+      <UniversityCrest className="size-10" />
     </div>
   )
 }

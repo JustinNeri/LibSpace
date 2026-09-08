@@ -1,4 +1,5 @@
-import { LibraryBig, LogOut, ShieldCheck } from 'lucide-react'
+import { LogOut, ShieldCheck } from 'lucide-react'
+import { LibSpaceMark } from './Logo'
 import { useAuth } from '../hooks/useAuth'
 import { initialsFor, navItems } from '../lib/nav'
 import { LIBRARY_NAME, UNIVERSITY_SHORT } from '../lib/constants'
@@ -20,9 +21,7 @@ export default function SideNav({ view, onChangeView }) {
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-slate-300 bg-white lg:flex">
       {/* Brand */}
       <div className="flex items-center gap-3 px-5 py-5">
-        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-slate-900 text-white">
-          <LibraryBig className="size-5" strokeWidth={2} />
-        </span>
+        <LibSpaceMark className="size-10 shrink-0" />
         <div className="min-w-0">
           <p className="font-display text-base leading-tight font-semibold text-slate-900">
             LibSpace
