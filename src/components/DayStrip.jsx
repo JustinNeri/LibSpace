@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
-import { addDays, isSameDay, toDateKey, fromDateKey } from '../lib/time'
+import {
+  addDays,
+  formatLongDate,
+  isSameDay,
+  toDateKey,
+  fromDateKey,
+} from '../lib/time'
 
 const DAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -40,6 +46,7 @@ export default function DayStrip({ date, onChangeDate }) {
 
   const today = new Date()
   const viewingToday = isSameDay(date, today)
+  const relativeLabel = relativeDayLabel(date, today)
 
   const week = useMemo(() => {
     const first = startOfWeek(date)
@@ -135,8 +142,21 @@ export default function DayStrip({ date, onChangeDate }) {
                   selected ? 'text-white/60' : 'text-slate-400',
                 ].join(' ')}
               >
-                <span className="sm:hidden">{DAY_INITIALS[day.getDay()]}</span>
-                <span className="hidden sm:inline">{DAY_SHORT[day.getDay()]}</span>
+                {isToday ? (
+                  <span
+                    className={[
+                      'text-[9px] font-extrabold sm:text-[10px]',
+                      selected ? 'text-accent-300' : 'text-accent-600',
+                    ].join(' ')}
+                  >
+                    TODAY
+                  </span>
+                ) : (
+                  <>
+                    <span className="sm:hidden">{DAY_INITIALS[day.getDay()]}</span>
+                    <span className="hidden sm:inline">{DAY_SHORT[day.getDay()]}</span>
+                  </>
+                )}
               </span>
               <span
                 className={[
@@ -161,8 +181,23 @@ export default function DayStrip({ date, onChangeDate }) {
           )
         })}
       </div>
+
+      <p className="mt-3 border-t border-slate-100 pt-2.5 text-center text-xs text-slate-500">
+        <span className="font-semibold text-slate-900">{formatLongDate(date)}</span>
+        {relativeLabel && (
+          <span className="text-slate-500"> · {relativeLabel}</span>
+        )}
+      </p>
     </section>
   )
+}
+
+/** "Today" / "Tomorrow" / "Yesterday", or nothing for anything further out. */
+function relativeDayLabel(date, today) {
+  if (isSameDay(date, today)) return 'Today'
+  if (isSameDay(date, addDays(today, 1))) return 'Tomorrow'
+  if (isSameDay(date, addDays(today, -1))) return 'Yesterday'
+  return null
 }
 
 function StepButton({ label, onClick, children }) {
