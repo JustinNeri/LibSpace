@@ -14,8 +14,12 @@
      warm, paper-toned grey. Every `text-slate-*` / `bg-slate-*` already in
      the codebase picks this up, so the whole app warms up at once instead
      of the cold blue-grey it shared with every other AI-styled dashboard. */
-  --color-slate-50: oklch(0.984 0.004 85);
-  --color-slate-100: oklch(0.962 0.006 84);
+  /* The page ground and the tint just below it. These two are deliberately
+     further from white than a default ramp: the app is white cards on paper,
+     and at 1.6% apart the cards had nothing to lift off. They move together
+     so a chip on a white card stays distinct from the page behind it. */
+  --color-slate-50: oklch(0.970 0.007 85);
+  --color-slate-100: oklch(0.947 0.009 84);
   --color-slate-200: oklch(0.922 0.008 82);
   --color-slate-300: oklch(0.862 0.010 80);
   --color-slate-400: oklch(0.706 0.013 75);
@@ -95,7 +99,7 @@
        under a lamp, not as a gradient. */
     background-image: radial-gradient(
       1200px 640px at 50% -12%,
-      oklch(0.512 0.108 162 / 0.07),
+      oklch(0.512 0.108 162 / 0.10),
       transparent 60%
     );
     background-attachment: fixed;
