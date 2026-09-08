@@ -1,5 +1,14 @@
 import { useState } from 'react'
-import { AlertCircle, Check, Eye, EyeOff, KeyRound, Loader2, UserRound } from 'lucide-react'
+import {
+  AlertCircle,
+  Check,
+  Eye,
+  EyeOff,
+  KeyRound,
+  Loader2,
+  LogOut,
+  UserRound,
+} from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../hooks/useAuth'
 import { MIN_PASSWORD_LENGTH, passwordProblem } from '../lib/validation'
@@ -9,7 +18,7 @@ const KNOWN_PROGRAMS = COURSES.flatMap((group) => group.programs)
 
 /** Edit the details captured at sign-up, and change the password. */
 export default function ProfileSettings() {
-  const { user, profile, isAdmin, refreshProfile } = useAuth()
+  const { user, profile, isAdmin, refreshProfile, signOut } = useAuth()
 
   const storedCourse = profile?.course ?? ''
   const [details, setDetails] = useState({
@@ -288,6 +297,28 @@ export default function ProfileSettings() {
           )}
         </div>
       </form>
+
+      {/* Sign out is here rather than in the phone's overflow sheet: students
+          have four tabs and no overflow, so the sheet never renders for them
+          and this was unreachable on a phone. */}
+      <section className="surface p-6 lg:col-span-2">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-slate-900">Sign out</p>
+            <p className="mt-0.5 text-xs text-slate-500">
+              You are signed in as {user?.email}.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={signOut}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 px-5 py-3 text-sm font-bold tracking-wide text-slate-700 transition-colors duration-200 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 sm:w-auto"
+          >
+            <LogOut className="size-4" strokeWidth={2} />
+            Sign out
+          </button>
+        </div>
+      </section>
     </div>
   )
 }

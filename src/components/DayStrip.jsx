@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react'
 import {
   addDays,
   formatLongDate,
@@ -88,16 +88,6 @@ export default function DayStrip({ date, onChangeDate }) {
           />
         </div>
 
-        {!viewingToday && (
-          <button
-            type="button"
-            onClick={() => onChangeDate(new Date())}
-            className="shrink-0 rounded-full bg-accent-50 px-3 py-1.5 text-xs font-bold tracking-wide text-accent-700 uppercase transition-colors duration-200 hover:bg-accent-100"
-          >
-            Today
-          </button>
-        )}
-
         <div className="flex shrink-0 items-center gap-1">
           <StepButton
             label="Previous week"
@@ -182,22 +172,41 @@ export default function DayStrip({ date, onChangeDate }) {
         })}
       </div>
 
-      <p className="mt-3 border-t border-slate-100 pt-2.5 text-center text-xs text-slate-500">
-        <span className="font-semibold text-slate-900">{formatLongDate(date)}</span>
-        {relativeLabel && (
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 border-t border-slate-100 pt-2.5 text-xs">
+        <p className="text-slate-500">
+          <span className="font-semibold text-slate-900">{formatLongDate(date)}</span>
           <span className="text-slate-500"> · {relativeLabel}</span>
+        </p>
+        {!viewingToday && (
+          <button
+            type="button"
+            onClick={() => onChangeDate(new Date())}
+            className="inline-flex items-center gap-1 font-semibold text-brand-700 underline decoration-brand-300 underline-offset-4 transition-colors duration-200 hover:text-brand-800"
+          >
+            <RotateCcw className="size-3" strokeWidth={2.5} />
+            Back to today
+          </button>
         )}
-      </p>
+      </div>
     </section>
   )
 }
 
-/** "Today" / "Tomorrow" / "Yesterday", or nothing for anything further out. */
+/**
+ * How far the day on screen is from the real today, in words.
+ * "Today" / "Tomorrow" / "In 4 days" / "Yesterday" / "6 days ago".
+ */
 function relativeDayLabel(date, today) {
-  if (isSameDay(date, today)) return 'Today'
-  if (isSameDay(date, addDays(today, 1))) return 'Tomorrow'
-  if (isSameDay(date, addDays(today, -1))) return 'Yesterday'
-  return null
+  // Compare calendar days, not instants, so the answer does not change with
+  // the time of day.
+  const MS_PER_DAY = 24 * 60 * 60 * 1000
+  const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  const days = Math.round((startOfDay(date) - startOfDay(today)) / MS_PER_DAY)
+
+  if (days === 0) return 'Today'
+  if (days === 1) return 'Tomorrow'
+  if (days === -1) return 'Yesterday'
+  return days > 0 ? `In ${days} days` : `${-days} days ago`
 }
 
 function StepButton({ label, onClick, children }) {
