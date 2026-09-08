@@ -29,6 +29,7 @@ export default function TimeslotGrid({
   weekday,
   dateKey,
   nowMinutes = null,
+  graceMinutes = 0,
   selectedSlot = null,
   currentUserId = null,
   loading = false,
@@ -61,11 +62,22 @@ export default function TimeslotGrid({
           weekday,
           dayWindow,
           nowMinutes,
+          graceMinutes,
         }),
       )
     }
     return map
-  }, [rooms, schedules, blocks, reservations, slots, weekday, dayWindow, nowMinutes])
+  }, [
+    rooms,
+    schedules,
+    blocks,
+    reservations,
+    slots,
+    weekday,
+    dayWindow,
+    nowMinutes,
+    graceMinutes,
+  ])
 
   const availableSpan = (roomId, index) => freeSpanAt(lanes.get(roomId) ?? [], index)
 

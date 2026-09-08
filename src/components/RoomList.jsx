@@ -36,6 +36,7 @@ export default function RoomList({
   dayWindow,
   weekday,
   nowMinutes = null,
+  graceMinutes = 0,
   loading = false,
   onSelectRoom,
 }) {
@@ -57,6 +58,7 @@ export default function RoomList({
         weekday,
         dayWindow,
         nowMinutes,
+        graceMinutes,
       })
       const summary = summarise(lane, { slots, nowMinutes })
 
@@ -81,7 +83,17 @@ export default function RoomList({
     }
 
     return map
-  }, [rooms, schedules, blocks, reservations, slots, weekday, dayWindow, nowMinutes])
+  }, [
+    rooms,
+    schedules,
+    blocks,
+    reservations,
+    slots,
+    weekday,
+    dayWindow,
+    nowMinutes,
+    graceMinutes,
+  ])
 
   if (loading) {
     return (

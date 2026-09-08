@@ -22,6 +22,7 @@ import TimeslotGrid from './components/TimeslotGrid'
 import Toast from './components/Toast'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { useReservations } from './hooks/useReservations'
+import { useSettings } from './hooks/useSettings'
 import { isSupabaseConfigured } from './lib/supabaseClient'
 import { DATED_VIEWS, viewCopy } from './lib/nav'
 import {
@@ -57,6 +58,11 @@ function Routes() {
 
 function Workspace() {
   const { user, profile, isAdmin } = useAuth()
+  const { rules } = useSettings()
+
+  // How long after a start time a booking can still be claimed before the
+  // no-show sweep takes it back. Staff set this in Manage rooms.
+  const graceMinutes = rules?.no_show_grace_minutes ?? 0
 
   const [date, setDate] = useState(() => new Date())
   const [view, setView] = useState('rooms')
@@ -112,9 +118,19 @@ function Workspace() {
       weekday,
       dayWindow,
       nowMinutes,
+      graceMinutes,
     })
     return freeStarts(lane, slots)
-  }, [booking, schedules, blocks, reservations, weekday, dayWindow, nowMinutes])
+  }, [
+    booking,
+    schedules,
+    blocks,
+    reservations,
+    weekday,
+    dayWindow,
+    nowMinutes,
+    graceMinutes,
+  ])
 
   const openBooking = useCallback(
     (room, startMin = null) => setBooking({ room, dateKey, startMin }),
@@ -227,6 +243,7 @@ function Workspace() {
               dayWindow={dayWindow}
               weekday={weekday}
               nowMinutes={nowMinutes}
+              graceMinutes={graceMinutes}
               currentUserId={user.id}
               loading={loading}
             />
@@ -252,6 +269,7 @@ function Workspace() {
                 weekday={weekday}
                 dateKey={dateKey}
                 nowMinutes={nowMinutes}
+                graceMinutes={graceMinutes}
                 currentUserId={user.id}
                 onBack={() => setOpenRoom(null)}
                 onReserve={openBooking}
@@ -265,6 +283,7 @@ function Workspace() {
                 dayWindow={dayWindow}
                 weekday={weekday}
                 nowMinutes={nowMinutes}
+                graceMinutes={graceMinutes}
                 loading={loading}
                 onSelectRoom={setOpenRoom}
               />
@@ -281,6 +300,7 @@ function Workspace() {
                 weekday={weekday}
                 dateKey={dateKey}
                 nowMinutes={nowMinutes}
+                graceMinutes={graceMinutes}
                 selectedSlot={booking}
                 currentUserId={user.id}
                 loading={loading}

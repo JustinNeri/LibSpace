@@ -48,6 +48,7 @@ export default function RoomSchedule({
   weekday,
   dateKey,
   nowMinutes = null,
+  graceMinutes = 0,
   currentUserId = null,
   onBack,
   onReserve,
@@ -82,8 +83,19 @@ export default function RoomSchedule({
         weekday,
         dayWindow,
         nowMinutes,
+        graceMinutes,
       }),
-    [room, slots, schedules, blocks, reservations, weekday, dayWindow, nowMinutes],
+    [
+      room,
+      slots,
+      schedules,
+      blocks,
+      reservations,
+      weekday,
+      dayWindow,
+      nowMinutes,
+      graceMinutes,
+    ],
   )
 
   // Past closing there is nothing left to offer, however the slots read.

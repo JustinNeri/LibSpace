@@ -66,9 +66,16 @@ npm run dev
 ## Supabase setup
 
 **1. Run the schema.** Paste [`supabase/schema.sql`](supabase/schema.sql) into the
-SQL editor. It creates `profiles`, `rooms`, `room_schedules`, `room_blocks` and
-`reservations`, plus RLS policies, the Realtime publication, and the 10 seeded
-discussion rooms open Mon–Sat 08:00–17:00.
+SQL editor. It creates `profiles`, `rooms`, `room_schedules`, `room_blocks`,
+`reservations`, `notifications`, `app_settings` and `mail_config`, plus RLS
+policies, the front-desk functions (`check_in_reservation`,
+`check_out_reservation`, `release_no_shows`), the Realtime publication, and the
+10 seeded discussion rooms open Mon–Sat 08:00–17:00.
+
+`app_settings` holds the library's rules — no-show grace period, how many
+bookings a student may hold, hours per day, how far ahead booking opens. Staff
+edit them under **Manage rooms**; a database trigger enforces them, so a
+client cannot skip them.
 
 **2. Switch the email template to a code.** By default Supabase emails a magic
 *link*, but this app asks for a 6-digit *code*. Go to

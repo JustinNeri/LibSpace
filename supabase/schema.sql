@@ -508,6 +508,308 @@ cross join generate_series(1, 6) as d(weekday)  -- Mon–Sat, closed Sunday
 on conflict (room_id, weekday) do nothing;
 
 -- ============================================================================
+-- FRONT DESK, LIBRARY RULES AND MAIL
+--
+-- Everything below was added to the running database after the first version
+-- of this file was written, and is transcribed from it so a fresh project
+-- built from this script behaves like the live one. Without it the app calls
+-- release_no_shows() on every day load, check-in and check-out fail, and the
+-- status column rejects the two statuses the front desk writes.
+-- ============================================================================
+
+-- ---------------------------------------------------------------- settings
+-- One row of library policy, editable by staff without a deploy.
+create table if not exists public.app_settings (
+  id                    int         primary key default 1 check (id = 1),
+  no_show_grace_minutes int         not null default 15
+                          check (no_show_grace_minutes between 0 and 120),
+  max_active_bookings   int         not null default 2
+                          check (max_active_bookings between 1 and 20),
+  max_hours_per_day     numeric     not null default 4
+                          check (max_hours_per_day between 0.5 and 24),
+  advance_days          int         not null default 14
+                          check (advance_days between 1 and 180),
+  updated_at            timestamptz not null default now()
+);
+
+insert into public.app_settings (id) values (1) on conflict (id) do nothing;
+
+alter table public.app_settings enable row level security;
+
+drop policy if exists "anyone reads settings" on public.app_settings;
+create policy "anyone reads settings" on public.app_settings
+  for select to authenticated using (true);
+
+drop policy if exists "admins change settings" on public.app_settings;
+create policy "admins change settings" on public.app_settings
+  for update to authenticated using (public.is_admin()) with check (public.is_admin());
+
+-- -------------------------------------------------------------- mail hook
+-- Where to POST when a decision is made, and the shared secret that proves
+-- the call came from here. RLS is enabled and deliberately has NO policies:
+-- nothing reachable through the API may read the secret. Only the
+-- security-definer trigger below, which bypasses RLS, can see it.
+create table if not exists public.mail_config (
+  id           int  primary key default 1 check (id = 1),
+  function_url text,
+  hook_secret  text,
+  enabled      boolean not null default false
+);
+
+insert into public.mail_config (id) values (1) on conflict (id) do nothing;
+
+alter table public.mail_config enable row level security;
+
+-- ------------------------------------------------- attendance on bookings
+alter table public.reservations
+  add column if not exists checked_in_at    timestamptz,
+  add column if not exists checked_out_at   timestamptz,
+  add column if not exists checked_in_by    uuid references auth.users (id) on delete set null,
+  add column if not exists created_by_admin boolean not null default false;
+
+-- 'completed' (checked out) and 'no_show' (nobody turned up) are written by
+-- the functions below, so the check constraint has to allow them.
+alter table public.reservations drop constraint if exists reservations_status_check;
+alter table public.reservations
+  add constraint reservations_status_check
+  check (status in ('pending', 'approved', 'rejected', 'cancelled', 'no_show', 'completed'));
+
+-- A completed booking still occupied its slot, so it keeps blocking overlap;
+-- check_out_reservation shortens end_time to now, which is what actually
+-- hands the remaining time back.
+alter table public.reservations drop constraint if exists reservations_no_overlap;
+alter table public.reservations
+  add constraint reservations_no_overlap
+  exclude using gist (
+    room_id with =,
+    tstzrange(start_time, end_time, '[)') with &&
+  ) where (status in ('pending', 'approved', 'completed'));
+
+-- --------------------------------------------------------- booking limits
+-- The caps in app_settings, enforced where a client cannot skip them.
+create or replace function public.enforce_booking_limits()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  rules       public.app_settings;
+  active_now  int;
+  hours_that_day numeric;
+  booking_hours  numeric;
+begin
+  -- Staff booking a walk-in at the desk are not subject to student limits.
+  if public.is_admin() then
+    return new;
+  end if;
+
+  select * into rules from public.app_settings where id = 1;
+  if not found then
+    return new;
+  end if;
+
+  if new.start_time > now() + make_interval(days => rules.advance_days) then
+    raise exception 'Bookings open only % days ahead', rules.advance_days;
+  end if;
+
+  select count(*) into active_now
+  from public.reservations
+  where user_id = new.user_id
+    and status in ('pending', 'approved')
+    and end_time > now()
+    and id is distinct from new.id;
+
+  if active_now >= rules.max_active_bookings then
+    raise exception 'You already have % active bookings. Cancel one first.',
+      rules.max_active_bookings;
+  end if;
+
+  booking_hours := extract(epoch from (new.end_time - new.start_time)) / 3600.0;
+
+  select coalesce(sum(extract(epoch from (end_time - start_time)) / 3600.0), 0)
+    into hours_that_day
+  from public.reservations
+  where user_id = new.user_id
+    and status in ('pending', 'approved', 'completed')
+    and (start_time at time zone 'Asia/Manila')::date
+        = (new.start_time at time zone 'Asia/Manila')::date
+    and id is distinct from new.id;
+
+  if hours_that_day + booking_hours > rules.max_hours_per_day then
+    raise exception 'That would put you over % hours for the day',
+      rules.max_hours_per_day;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists reservations_enforce_limits on public.reservations;
+create trigger reservations_enforce_limits
+  before insert on public.reservations
+  for each row execute function public.enforce_booking_limits();
+
+-- ------------------------------------------------------------- front desk
+create or replace function public.check_in_reservation(reservation_id uuid)
+returns public.reservations
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  row public.reservations;
+begin
+  if not public.is_admin() then
+    raise exception 'Only library staff can check a group in';
+  end if;
+
+  update public.reservations
+  set checked_in_at = coalesce(checked_in_at, now()),
+      checked_in_by = auth.uid(),
+      status = case when status = 'no_show' then 'approved' else status end
+  where id = reservation_id
+  returning * into row;
+
+  return row;
+end;
+$$;
+
+-- Checking out hands the unused time back by pulling end_time in to now.
+create or replace function public.check_out_reservation(reservation_id uuid)
+returns public.reservations
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  row public.reservations;
+begin
+  select * into row from public.reservations where id = reservation_id;
+  if not found then
+    raise exception 'Reservation not found';
+  end if;
+
+  if not public.is_admin() and row.user_id is distinct from auth.uid() then
+    raise exception 'That is not your booking';
+  end if;
+
+  update public.reservations
+  set checked_out_at = now(),
+      status = 'completed',
+      end_time = greatest(start_time + interval '1 minute', least(end_time, now()))
+  where id = reservation_id
+  returning * into row;
+
+  return row;
+end;
+$$;
+
+-- Rooms nobody claimed within the grace period go back to other students.
+-- The app calls this on every day load; a cron job runs it in the background.
+create or replace function public.release_no_shows()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  grace int;
+  released int;
+begin
+  select no_show_grace_minutes into grace from public.app_settings where id = 1;
+  grace := coalesce(grace, 15);
+
+  with swept as (
+    update public.reservations
+    set status = 'no_show'
+    where status = 'approved'
+      and checked_in_at is null
+      and start_time + make_interval(mins => grace) < now()
+      and end_time > now()
+    returning id, user_id, room_id
+  )
+  insert into public.notifications (user_id, kind, title, body, reservation_id)
+  select
+    s.user_id,
+    'cancelled',
+    coalesce(r.name, 'Your room') || ' was released',
+    'Nobody checked in within ' || grace || ' minutes, so the room went back to other students.',
+    s.id
+  from swept s
+  left join public.rooms r on r.id = s.room_id
+  where s.user_id is not null;
+
+  get diagnostics released = row_count;
+  return released;
+end;
+$$;
+
+-- ------------------------------------------------------------------ email
+-- Optional: posts the decision to an edge function that sends the mail.
+-- Does nothing until a row in mail_config is filled in and enabled.
+create extension if not exists pg_net;
+
+create or replace function public.email_reservation_decision()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  cfg       public.mail_config;
+  student   record;
+  when_text text;
+  room_name text;
+begin
+  if new.status is not distinct from old.status then return new; end if;
+  if new.status not in ('approved', 'rejected') then return new; end if;
+  if new.user_id is null then return new; end if;
+
+  select * into cfg from public.mail_config where id = 1;
+  if not found or not cfg.enabled or cfg.function_url is null then
+    return new;
+  end if;
+
+  select p.email, p.full_name into student
+  from public.profiles p where p.id = new.user_id;
+
+  if student.email is null then return new; end if;
+
+  select name into room_name from public.rooms where id = new.room_id;
+
+  when_text := to_char(new.start_time at time zone 'Asia/Manila', 'FMDay, FMMon DD')
+    || ' at ' || to_char(new.start_time at time zone 'Asia/Manila', 'FMHH12:MI AM')
+    || ' – ' || to_char(new.end_time at time zone 'Asia/Manila', 'FMHH12:MI AM');
+
+  perform net.http_post(
+    url     := cfg.function_url,
+    headers := jsonb_build_object('Content-Type', 'application/json'),
+    body    := jsonb_build_object(
+      'secret', cfg.hook_secret,
+      'email',  student.email,
+      'name',   coalesce(nullif(student.full_name, ''), 'there'),
+      'room',   coalesce(room_name, 'Your room'),
+      'when',   when_text,
+      'status', new.status,
+      'reason', new.rejection_reason
+    )
+  );
+
+  return new;
+exception when others then
+  -- Never let mail trouble roll back a decision.
+  raise warning 'email_reservation_decision failed: %', sqlerrm;
+  return new;
+end;
+$$;
+
+drop trigger if exists reservations_email_decision on public.reservations;
+create trigger reservations_email_decision
+  after update on public.reservations
+  for each row execute function public.email_reservation_decision();
+
+-- ============================================================================
 -- PROMOTE AN ADMIN
 -- Sign in once with the staff account so the profile row exists, then run:
 --

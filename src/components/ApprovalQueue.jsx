@@ -27,6 +27,14 @@ export default function ApprovalQueue({ onDecided }) {
   const [error, setError] = useState(null)
   const [expandedId, setExpandedId] = useState(null)
   const [rejecting, setRejecting] = useState(null) // { id, reason }
+  // Ticked rather than read during render, so a request crossing its end time
+  // becomes un-approvable on its own instead of at the next unrelated redraw.
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(timer)
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -122,6 +130,11 @@ export default function ApprovalQueue({ onDecided }) {
         const end = new Date(row.end_time)
         const isBusy = busyId === row.id
         const isRejecting = rejecting?.id === row.id
+        // The queue has no date filter — a request nobody decided is still
+        // here days later. Approving one of those either books a room in the
+        // past or hands the student a slot release_no_shows() sweeps on its
+        // next run, so approval is closed once the booking's time has gone.
+        const expired = end.getTime() <= now
 
         return (
           <article
@@ -131,8 +144,15 @@ export default function ApprovalQueue({ onDecided }) {
             <div className="flex flex-wrap items-start justify-between gap-4 p-5">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-lg bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700">
-                    Pending
+                  <span
+                    className={[
+                      'rounded-lg px-2 py-1 text-[11px] font-semibold',
+                      expired
+                        ? 'bg-slate-100 text-slate-500'
+                        : 'bg-amber-50 text-amber-700',
+                    ].join(' ')}
+                  >
+                    {expired ? 'Expired' : 'Pending'}
                   </span>
                   <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-900">
                     <MapPin className="size-3.5 text-slate-400" strokeWidth={2} />
@@ -140,11 +160,22 @@ export default function ApprovalQueue({ onDecided }) {
                   </p>
                 </div>
 
-                <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-slate-600">
+                <p
+                  className={[
+                    'mt-2 inline-flex items-center gap-1.5 text-sm',
+                    expired ? 'text-slate-400 line-through' : 'text-slate-600',
+                  ].join(' ')}
+                >
                   <CalendarClock className="size-3.5 text-slate-400" strokeWidth={2} />
                   {formatLongDate(start)} · {formatTime(minutesFromDate(start))} –{' '}
                   {formatTime(minutesFromDate(end))}
                 </p>
+
+                {expired && (
+                  <p className="mt-1.5 text-xs font-medium text-slate-500">
+                    This time has already passed — decline it to clear the queue.
+                  </p>
+                )}
 
                 <p className="mt-1.5 text-sm text-slate-900">
                   {row.student_name}
@@ -190,7 +221,8 @@ export default function ApprovalQueue({ onDecided }) {
                 <button
                   type="button"
                   onClick={() => decide(row, 'approved')}
-                  disabled={isBusy}
+                  disabled={isBusy || expired}
+                  title={expired ? 'That time has already passed' : undefined}
                   className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-emerald-600/25 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-md disabled:pointer-events-none disabled:opacity-50"
                 >
                   {isBusy ? (

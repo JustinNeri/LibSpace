@@ -15,6 +15,7 @@ export default function DaySummary({
   dayWindow,
   weekday,
   nowMinutes = null,
+  graceMinutes = 0,
   currentUserId = null,
   loading = false,
 }) {
@@ -40,6 +41,7 @@ export default function DaySummary({
         weekday,
         dayWindow,
         nowMinutes,
+        graceMinutes,
       })
       freeSlots += summarise(lane, { slots, nowMinutes }).free
       if (currentIndex !== -1 && lane[currentIndex]?.state === 'free') freeNow += 1
@@ -69,6 +71,7 @@ export default function DaySummary({
     dayWindow,
     weekday,
     nowMinutes,
+    graceMinutes,
     currentUserId,
   ])
 

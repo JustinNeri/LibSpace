@@ -9,7 +9,7 @@ import { MAX_BOOKING_SLOTS, parseTimeString, rangeToSpan } from './time'
  *
  * States, in the order they are applied (later wins):
  *   closed   outside the admin's opening hours for this weekday
- *   past     already elapsed (only when viewing today)
+ *   past     elapsed, or too far into the grace period to still claim
  *   blocked  an admin block
  *   pending  a request awaiting staff approval
  *   booked   an approved reservation
@@ -26,6 +26,7 @@ export function buildLane({
   weekday,
   dayWindow,
   nowMinutes = null,
+  graceMinutes = 0,
 }) {
   const schedule = schedules.find(
     (row) => row.room_id === room.id && row.weekday === weekday,
@@ -37,7 +38,16 @@ export function buildLane({
     if (!schedule || slot.startMin < opens || slot.endMin > closes) {
       return { state: 'closed' }
     }
-    if (nowMinutes !== null && slot.endMin <= nowMinutes) return { state: 'past' }
+    // A slot stops being bookable once the grace period into it has gone.
+    // release_no_shows() sweeps any approved booking whose start is more than
+    // `no_show_grace_minutes` old with nobody checked in, so offering a start
+    // past that point hands the student a booking the next sweep deletes.
+    if (
+      nowMinutes !== null &&
+      (slot.endMin <= nowMinutes || slot.startMin + graceMinutes < nowMinutes)
+    ) {
+      return { state: 'past' }
+    }
     return { state: 'free' }
   })
 
