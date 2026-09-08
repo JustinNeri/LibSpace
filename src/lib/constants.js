@@ -18,6 +18,16 @@ export const LIBRARY_NAME = 'University Library'
  */
 export const UNIVERSITY_LOGO = '/hau-logo.png'
 
+/**
+ * Campus photograph used behind the sign-in screen.
+ *
+ * Same rule as the crest: the photo belongs to the university, so the file
+ * is not committed here. Save it as `public/hau-campus.jpg` and it appears,
+ * tinted into the pine field, behind the login card. If the file is absent
+ * the screen falls back to the plain field and nothing looks broken.
+ */
+export const CAMPUS_PHOTO = '/hau-campus.jpg'
+
 /** HAU requires a group of at least this many to reserve a discussion room. */
 export const MIN_GROUP_SIZE = 5
 

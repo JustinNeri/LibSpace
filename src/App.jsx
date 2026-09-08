@@ -4,6 +4,7 @@ import AdminPanel from './components/AdminPanel'
 import ApprovalQueue from './components/ApprovalQueue'
 import BottomNav from './components/BottomNav'
 import DaySummary from './components/DaySummary'
+import HomeGreeting from './components/HomeGreeting'
 import DayStrip from './components/DayStrip'
 import DeskView from './components/DeskView'
 import HistoryView from './components/HistoryView'
@@ -204,6 +205,10 @@ function Workspace() {
     setError(null)
   }, [])
 
+  // The browse screen — rooms, no single room opened — is the one that gets
+  // the greeting and the next-booking card.
+  const isRoomsList = view === 'rooms' && !activeRoom
+
   const { title, blurb } = viewCopy(view, {
     isAdmin,
     roomName: activeRoom?.name ?? null,
@@ -220,6 +225,13 @@ function Workspace() {
         <AppHeader />
 
         <main className="mx-auto max-w-[1280px] px-4 pt-4 pb-28 sm:px-6 lg:pt-2 lg:pb-14">
+          {/* The rooms list opens with a greeting and whatever you have
+              booked next, so the title below it steps down to a section
+              heading rather than competing for the top of the page. */}
+          {isRoomsList && (
+            <HomeGreeting onViewBookings={() => changeView('mine')} />
+          )}
+
           <div className="mb-5">
             {view === 'rooms' && activeRoom && (
               <button
@@ -231,9 +243,15 @@ function Workspace() {
                 All rooms
               </button>
             )}
-            <h1 className="text-[1.75rem] leading-tight font-semibold text-slate-900 sm:text-4xl">
-              {title}
-            </h1>
+            {isRoomsList ? (
+              <h2 className="font-display text-xl leading-tight font-semibold text-slate-900 sm:text-2xl">
+                {title}
+              </h2>
+            ) : (
+              <h1 className="text-[1.75rem] leading-tight font-semibold text-slate-900 sm:text-4xl">
+                {title}
+              </h1>
+            )}
             <p className="mt-1.5 max-w-2xl text-sm text-slate-500">{blurb}</p>
           </div>
 
@@ -257,7 +275,7 @@ function Workspace() {
             </div>
           )}
 
-          {view === 'rooms' && !activeRoom && (
+          {isRoomsList && (
             <DaySummary
               rooms={rooms}
               reservations={reservations}
@@ -265,6 +283,8 @@ function Workspace() {
               schedules={schedules}
               dayWindow={dayWindow}
               weekday={weekday}
+              date={date}
+              onChangeDate={setDate}
               nowMinutes={nowMinutes}
               graceMinutes={graceMinutes}
               dayClosedReason={dayClosedReason}
@@ -274,7 +294,7 @@ function Workspace() {
             />
           )}
 
-          {view === 'rooms' && !activeRoom && !loading && rooms.length > 0 && (
+          {isRoomsList && !loading && rooms.length > 0 && (
             <RoomFilters
               filters={filters}
               onChange={setFilters}
@@ -313,6 +333,7 @@ function Workspace() {
                 dayClosedReason={dayClosedReason}
                 loading={loading}
                 onSelectRoom={setOpenRoom}
+                onPickSlot={openBooking}
               />
             ))}
 

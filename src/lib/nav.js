@@ -51,7 +51,7 @@ export function viewCopy(view, { isAdmin, roomName = null, slotMinutes = 30 }) {
         ? { title: roomName, blurb: 'Pick a free time to reserve this room.' }
         : {
             title: 'Discussion rooms',
-            blurb: 'Tap a room to see when it is free today.',
+            blurb: 'Find a room for your next study session — tap a free time to book it.',
           }
     case 'grid':
       return {
@@ -98,6 +98,22 @@ export function viewCopy(view, { isAdmin, roomName = null, slotMinutes = 30 }) {
     default:
       return { title: 'LibSpace', blurb: '' }
   }
+}
+
+/**
+ * The name to greet someone by.
+ *
+ * Profiles store "Dela Cruz, Juan M." plus separate parts, and neither is
+ * guaranteed to be filled in yet, so this walks from the most personal thing
+ * available down to the email local part.
+ */
+export function firstNameOf(profile, user) {
+  return (
+    profile?.first_name?.trim() ||
+    profile?.full_name?.split(',')[1]?.trim().split(' ')[0] ||
+    user?.email?.split('@')[0] ||
+    'there'
+  )
 }
 
 /** "Dela Cruz, Juan M." -> "DJ". Falls back to the email local part. */

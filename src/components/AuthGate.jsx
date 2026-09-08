@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { AlertCircle, ArrowLeft, ArrowRight, Eye, EyeOff } from 'lucide-react'
+import { AlertCircle, ArrowLeft, ArrowRight, Eye, EyeOff, Mail } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import AuthLayout, {
   AuthButton,
-  AuthHeading,
+  IconField,
   Label,
   Steps,
   authField,
@@ -148,6 +148,38 @@ export default function AuthGate() {
 
   /* ---------------- render ---------------- */
 
+  /**
+   * The screen's greeting, shown on the field above the card. Every mode
+   * defines one, so the card itself is only ever the form.
+   */
+  const hero =
+    step === 'code'
+      ? {
+          title: 'Check your inbox',
+          subtitle: (
+            <>
+              We sent a code to{' '}
+              <span className="font-semibold text-white">{email}</span>. It expires in
+              one hour.
+            </>
+          ),
+        }
+      : mode === 'login'
+        ? {
+            title: 'Welcome back',
+            emoji: '👋',
+            subtitle: 'Find your space and get studying.',
+          }
+        : mode === 'register'
+          ? {
+              title: 'Create your account',
+              subtitle: `Register with your ${STUDENT_EMAIL_DOMAIN} address. We'll email a code to verify it, then you pick a password.`,
+            }
+          : {
+              title: 'Reset your password',
+              subtitle: `We'll email a code so you can set a new password.`,
+            }
+
   const footer =
     step === 'code' ? null : mode === 'login' ? (
       <>
@@ -162,7 +194,7 @@ export default function AuthGate() {
     ) : null
 
   return (
-    <AuthLayout footer={footer}>
+    <AuthLayout hero={hero} footer={footer}>
       {step === 'code' ? (
         <form onSubmit={handleVerify} className="animate-slide-up">
           <Steps current={1} />
@@ -177,13 +209,7 @@ export default function AuthGate() {
             Use a different email
           </BackLink>
 
-          <AuthHeading title="Check your inbox">
-            We sent a code to{' '}
-            <span className="font-semibold text-slate-900">{email}</span>. It expires in
-            one hour.
-          </AuthHeading>
-
-          <Label htmlFor="code" className="mt-6">
+          <Label htmlFor="code">
             Access code
           </Label>
           <input
@@ -219,23 +245,21 @@ export default function AuthGate() {
         </form>
       ) : mode === 'login' ? (
         <form onSubmit={handleLogin} className="animate-slide-up">
-          <AuthHeading title="Welcome back">
-            Sign in to reserve a discussion room.
-          </AuthHeading>
-
-          <Label htmlFor="email" className="mt-6">
-            Email
-          </Label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder={`juan.delacruz@${STUDENT_EMAIL_DOMAIN}`}
-            autoComplete="email"
-            autoFocus
-            className={`${authField} mt-2`}
-          />
+          <Label htmlFor="email">Email</Label>
+          <div className="mt-2">
+            <IconField icon={Mail}>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder={`juan.delacruz@${STUDENT_EMAIL_DOMAIN}`}
+                autoComplete="email"
+                autoFocus
+                className={`${authField} pl-11`}
+              />
+            </IconField>
+          </div>
 
           <div className="mt-5 flex items-baseline justify-between gap-3">
             <Label htmlFor="password">Password</Label>
@@ -275,27 +299,23 @@ export default function AuthGate() {
             <BackLink onClick={() => switchMode('login')}>Back to sign in</BackLink>
           )}
 
-          <AuthHeading
-            title={mode === 'register' ? 'Create your account' : 'Reset your password'}
-          >
-            {mode === 'register'
-              ? `Register with your ${STUDENT_EMAIL_DOMAIN} address. We'll email a code to verify it, then you pick a password.`
-              : `We'll email a code so you can set a new password.`}
-          </AuthHeading>
-
-          <Label htmlFor="email" className="mt-6">
+          <Label htmlFor="email">
             {mode === 'register' ? 'Gmail address' : 'Email'}
           </Label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder={`juan.delacruz@${STUDENT_EMAIL_DOMAIN}`}
-            autoComplete="email"
-            autoFocus
-            className={`${authField} mt-2`}
-          />
+          <div className="mt-2">
+            <IconField icon={Mail}>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder={`juan.delacruz@${STUDENT_EMAIL_DOMAIN}`}
+                autoComplete="email"
+                autoFocus
+                className={`${authField} pl-11`}
+              />
+            </IconField>
+          </div>
 
           {error && <ErrorNote>{error}</ErrorNote>}
 

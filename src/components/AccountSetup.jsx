@@ -8,7 +8,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
-import AuthLayout, { AuthHeading, SectionHeading, Steps, authField } from './AuthLayout'
+import AuthLayout, { SectionHeading, Steps, authField } from './AuthLayout'
 import { MIN_PASSWORD_LENGTH, passwordProblem } from '../lib/validation'
 import {
   COURSES,
@@ -114,6 +114,18 @@ export default function AccountSetup() {
   return (
     <AuthLayout
       wide={!isRecovery}
+      hero={{
+        title: isRecovery ? 'Set a new password' : 'Finish your account',
+        subtitle: (
+          <>
+            Email verified as{' '}
+            <span className="font-semibold text-white">{user?.email}</span>.
+            {isRecovery
+              ? ' Choose a new password to finish.'
+              : ` Your details appear on every reservation you make at the ${UNIVERSITY_NAME} library.`}
+          </>
+        ),
+      }}
       footer={
         <button
           type="button"
@@ -127,15 +139,7 @@ export default function AccountSetup() {
       <div className="animate-slide-up">
         {!isRecovery && <Steps current={2} />}
 
-        <AuthHeading title={isRecovery ? 'Set a new password' : 'Finish your account'}>
-          Email verified as{' '}
-          <span className="font-semibold text-slate-900">{user?.email}</span>.
-          {isRecovery
-            ? ' Choose a new password to finish.'
-            : ` Your details appear on every reservation you make at the ${UNIVERSITY_NAME} library.`}
-        </AuthHeading>
-
-        <form onSubmit={handleSubmit} className="mt-7 space-y-7">
+        <form onSubmit={handleSubmit} className="space-y-7">
           {!isRecovery && (
             <>
               <Section title="Name">

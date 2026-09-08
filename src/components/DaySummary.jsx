@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
-import { CalendarCheck, DoorOpen, Hourglass, Moon } from 'lucide-react'
-import { buildSlots } from '../lib/time'
+import { ArrowRight, CalendarCheck, DoorOpen, Hourglass, Moon } from 'lucide-react'
+import { addDays, buildSlots, formatTime, parseTimeString } from '../lib/time'
 import { buildLane, summarise } from '../lib/availability'
 
 /**
@@ -14,6 +14,8 @@ export default function DaySummary({
   schedules,
   dayWindow,
   weekday,
+  date,
+  onChangeDate = null,
   nowMinutes = null,
   graceMinutes = 0,
   dayClosedReason = null,
@@ -101,18 +103,13 @@ export default function DaySummary({
 
   if (nothingToShow) {
     return (
-      <div className="surface mb-5 flex items-center gap-3 px-4 py-3.5">
-        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-500">
-          <Moon className="size-4.5" strokeWidth={2} />
-        </span>
-        <p className="text-sm text-slate-600">
-          {dayClosedReason === 'past'
-            ? 'This date has passed. Pick today or a later date to book.'
-            : dayClosedReason === 'too-far'
-              ? 'Booking is not open this far ahead yet. Pick an earlier date.'
-              : 'The library is closed for today. Pick tomorrow to book a room.'}
-        </p>
-      </div>
+      <ClosedNotice
+        reason={dayClosedReason}
+        date={date}
+        schedules={schedules}
+        weekday={weekday}
+        onChangeDate={onChangeDate}
+      />
     )
   }
 
@@ -158,6 +155,72 @@ export default function DaySummary({
         value={stats.awaiting}
         label={isAdmin ? 'Pending this day' : 'Yours pending this day'}
       />
+    </div>
+  )
+}
+
+/**
+ * Why nothing can be booked, and the quickest way out of it.
+ *
+ * "The library is closed" on its own leaves a student guessing when to come
+ * back, so this says when the next day opens and offers one tap to go and
+ * look at it. The reopening time is read from the rooms' own schedules for
+ * that weekday, not assumed.
+ */
+function ClosedNotice({ reason, date, schedules, weekday, onChangeDate }) {
+  const tomorrow = date ? addDays(date, 1) : null
+
+  // Earliest opening across every room scheduled for tomorrow's weekday.
+  const reopensAt = useMemo(() => {
+    const tomorrowWeekday = (weekday + 1) % 7
+    const opens = schedules
+      .filter((row) => row.weekday === tomorrowWeekday)
+      .map((row) => parseTimeString(row.opens_at))
+      .filter((value) => value !== null)
+
+    return opens.length > 0 ? Math.min(...opens) : null
+  }, [schedules, weekday])
+
+  const past = reason === 'past'
+  const tooFar = reason === 'too-far'
+
+  const title = past
+    ? 'This date has passed'
+    : tooFar
+      ? 'Booking is not open this far ahead'
+      : 'The library is closed today'
+
+  const detail = past
+    ? 'Pick today or a later date to reserve a room.'
+    : tooFar
+      ? 'Pick an earlier date — the library only takes bookings a couple of weeks out.'
+      : reopensAt !== null
+        ? `Room reservations reopen tomorrow at ${formatTime(reopensAt)}.`
+        : 'Pick another day to reserve a room.'
+
+  return (
+    <div className="surface mb-5 flex flex-wrap items-start gap-x-3 gap-y-2 px-4 py-3.5">
+      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-500">
+        <Moon className="size-4.5" strokeWidth={2} />
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-slate-900">{title}</p>
+        <p className="mt-0.5 text-sm text-slate-500">{detail}</p>
+
+        {onChangeDate && (past || tooFar || tomorrow) && (
+          <button
+            type="button"
+            onClick={() =>
+              onChangeDate(past || tooFar ? new Date() : tomorrow)
+            }
+            className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700 underline decoration-brand-300 underline-offset-4 transition-all duration-200 ease-in-out hover:translate-x-0.5 hover:text-brand-800"
+          >
+            {past || tooFar ? 'Go to today' : "View tomorrow's availability"}
+            <ArrowRight className="size-3.5" strokeWidth={2.5} />
+          </button>
+        )}
+      </div>
     </div>
   )
 }

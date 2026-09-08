@@ -98,6 +98,18 @@ Until the file exists, `UniversityCrest` renders nothing rather than a
 placeholder, so the app never shows a stand-in for the real crest. Set
 `UNIVERSITY_LOGO` to `null` to leave it out deliberately.
 
+**The campus photograph is not in this repo either**, for the same reason. The
+sign-in screen washes it into the pine field behind the login card:
+
+1. Save the photo as `public/hau-campus.jpg` — landscape, ideally 2000px wide
+   or more, since it covers the whole viewport.
+2. That is all — `CAMPUS_PHOTO` in
+   [`src/lib/constants.js`](src/lib/constants.js) already points at it.
+
+If the file is missing the image is dropped on error and the sign-in screen
+falls back to the plain pine field and its motif, so nothing renders broken.
+Set `CAMPUS_PHOTO` to `null` to leave it out deliberately.
+
 ## Getting started
 
 ```bash

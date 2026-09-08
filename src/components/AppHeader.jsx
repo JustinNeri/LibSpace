@@ -1,30 +1,18 @@
 import { LibSpaceMark } from './Logo'
 import NotificationBell from './NotificationBell'
-import { useAuth } from '../hooks/useAuth'
 import { UNIVERSITY_SHORT } from '../lib/constants'
-
-function greeting(hour) {
-  if (hour < 12) return 'Good morning'
-  if (hour < 18) return 'Good afternoon'
-  return 'Good evening'
-}
 
 /**
  * Slim top bar. Navigation used to live here — seven tabs, a day stepper and
  * an account menu on one row — and it wrapped into a wall on anything
  * narrower than a laptop. All of that has moved to SideNav / BottomNav and
- * DayStrip, which leaves this bar to do the one thing a top bar is good at:
- * say who you are and what needs your attention.
+ * DayStrip.
+ *
+ * The greeting has moved too, down onto the rooms screen itself, where a
+ * phone can see it as well — so this bar is left holding the brand and the
+ * one thing that needs your attention.
  */
 export default function AppHeader() {
-  const { profile, user } = useAuth()
-
-  const firstName =
-    profile?.first_name?.trim() ||
-    profile?.full_name?.split(',')[1]?.trim().split(' ')[0] ||
-    user?.email?.split('@')[0] ||
-    'there'
-
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-slate-50/85 backdrop-blur-lg">
       <div className="mx-auto flex max-w-[1200px] items-center gap-3 px-4 py-3 sm:px-6 lg:py-5">
@@ -39,16 +27,6 @@ export default function AppHeader() {
               {UNIVERSITY_SHORT} · Discussion rooms
             </p>
           </div>
-        </div>
-
-        {/* Desktops have the rail, so the bar can be a greeting instead. */}
-        <div className="hidden min-w-0 lg:block">
-          <p className="text-xs font-semibold tracking-[0.14em] text-slate-400 uppercase">
-            {greeting(new Date().getHours())}
-          </p>
-          <p className="font-display truncate text-xl font-semibold text-slate-900">
-            {firstName}
-          </p>
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
