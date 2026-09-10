@@ -1,6 +1,6 @@
 # LibSpace
 
-**Live at [libspace-flax.vercel.app](https://libspace-flax.vercel.app/)**
+**Live at [libspace-hau.vercel.app/](https://libspace-flax.vercel.app/)**
 
 Replaces the physical logbook at the **Holy Angel University** library by
 letting students check real-time discussion-room availability and reserve one
@@ -12,7 +12,7 @@ of the 10 discussion rooms remotely.
 
 ## Using it
 
-Open [libspace-flax.vercel.app](https://libspace-flax.vercel.app/) on a phone or
+Open [libspace-hau.vercel.app](https://libspace-flax.vercel.app/) on a phone or
 a desktop — it is the same app either way, no install.
 
 **Students** register with a `@gmail.com` address. Registration emails a
